@@ -1,85 +1,40 @@
 <script>
-    let player = {
-        cash: 2500,
-        level: 1,
-        holdingName: "Ma Holding Royale",
-        skills: { braquage: 1, gestion: 1 }
-    };
+    let cash = 2500;
+    let logs = ["Bienvenue, Boss !"];
+    function addLog(m) { logs = [m, ...logs].slice(0, 3); }
 
-    let logs = ["Bienvenue dans Geo-Empire !"];
-
-    function tenterBraquage() {
-        const chance = Math.random() * 100;
-        if (chance < 30 + (player.skills.braquage * 5)) {
-            const gain = Math.floor(Math.random() * 5000) + 1000;
-            player.cash += gain;
-            addLog(`✅ Braquage réussi ! +${gain}$`);
-        } else {
-            player.cash -= Math.floor(player.cash * 0.2);
-            addLog(`🚨 ÉCHEC ! La police t'a eu.`);
-        }
+    function braquer() {
+        if (Math.random() > 0.7) { cash += 2000; addLog("✅ BRAQUAGE RÉUSSI ! +2000$"); }
+        else { cash -= 500; addLog("🚨 POLICE ! Amende -500$"); }
     }
 
-    function jouerLoterie() {
-        if (player.cash < 100) return;
-        player.cash -= 100;
-        if (Math.random() > 0.9) {
-            player.cash += 10000;
-            addLog("💎 JACKPOT ! +10.000$");
-        } else {
-            addLog("❌ Ticket perdant.");
-        }
-    }
-
-    function addLog(msg) {
-        logs = [msg, ...logs].slice(0, 5);
+    function loterie() {
+        if (cash < 100) return;
+        cash -= 100;
+        if (Math.random() > 0.9) { cash += 5000; addLog("💎 JACKPOT ! +5000$"); }
+        else { addLog("❌ Perdu..."); }
     }
 </script>
 
 <main>
-    <div class="hud">
-        <h1>{player.holdingName}</h1>
-        <div class="stats">
-            <span>💰 {player.cash}$</span>
-            <span>🎓 Nv.{player.skills.gestion}</span>
-            <span>🔫 Nv.{player.skills.braquage}</span>
+    <div style="background:#2c3e50; color:white; padding:20px; text-align:center;">
+        <h1>GEO-EMPIRE : HOLDING 👑</h1>
+        <h2>💰 ARGENT : {cash} $</h2>
+    </div>
+
+    <div style="padding:20px; background:#f4f4f4; color:#333;">
+        <h3>📍 ACTIONS DISPONIBLES</h3>
+        <button on:click={braquer} style="background:red; color:white; width:100%; padding:15px; margin-bottom:10px; cursor:pointer;">🔥 BRAQUER UNE BANQUE</button>
+        <button on:click={loterie} style="background:blue; color:white; width:100%; padding:15px; cursor:pointer;">🎰 JOUER LOTERIE (100$)</button>
+        
+        <div style="margin-top:20px; background:white; padding:10px; border:1px solid #ccc;">
+            <strong>LOGS :</strong>
+            {#each logs as log}<p>> {log}</p>{/each}
         </div>
-    </div>
-
-    <div class="game">
-        <section class="map">
-            <div class="poi" style="top:20%; left:30%">🏦 Banque</div>
-        </section>
-
-        <section class="actions">
-            <div class="box">
-                <h3>🏢 Business</h3>
-                <button on:click={jouerLoterie}>🎰 Loterie (100$)</button>
-            </div>
-            <div class="box">
-                <h3>🔥 Illégal</h3>
-                <button class="red" on:click={tenterBraquage}>Braquer la banque</button>
-            </div>
-        </section>
-    </div>
-
-    <div class="console">
-        {#each logs as log}
-            <p>> {log}</p>
-        {/each}
     </div>
 </main>
 
 <style>
-    :global(body) { margin: 0; background: #1a1a1a; color: white; font-family: sans-serif; }
-    .hud { background: #2c3e50; padding: 10px; border-bottom: 3px solid #f1c40f; text-align: center; }
-    .stats { display: flex; justify-content: space-around; font-weight: bold; }
-    .game { display: flex; height: 60vh; }
-    .map { flex: 2; background: #34495e; position: relative; display: flex; align-items: center; justify-content: center; }
-    .poi { position: absolute; background: #f1c40f; color: black; padding: 5px; border-radius: 10px; font-size: 12px; }
-    .actions { flex: 1; padding: 10px; background: #222; }
-    .box { background: #333; padding: 10px; border-radius: 5px; margin-bottom: 10px; }
-    button { width: 100%; padding: 10px; margin: 5px 0; border: none; border-radius: 5px; background: #3498db; color: white; font-weight: bold; cursor: pointer; }
-    .red { background: #e74c3c; }
-    .console { background: #000; padding: 10px; font-family: monospace; color: #2ecc71; min-height: 100px; }
+    :global(body) { margin: 0; font-family: sans-serif; }
+    button { font-weight: bold; border: none; border-radius: 5px; }
 </style>
