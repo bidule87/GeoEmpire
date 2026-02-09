@@ -1,93 +1,40 @@
 <script>
-  import { onMount } from 'svelte';
-
-  // --- SYSTÈME DE JEU INTÉGRAL ---
   let player = {
     cash: 50000,
     gToken: 10,
-    holdingName: "GEO EMPIRE",
+    crowns: 928,
     day: 1,
-    clients: 100, // Clients de base
-    marketingLevel: 1,
-    properties: [],
-    history: []
+    properties: []
   };
 
   let activeTab = 'Carte GPS';
-  let map;
+  let logs = ["Système prêt. En attente d'ordres..."];
 
-  // --- CATALOGUE DES ENTREPRISES ---
-  const catalog = [
-    { id: 1, name: "Commerce de Rue", cost: 15000, incomePerClient: 5, maintenance: 200, icon: '🏠' },
-    { id: 2, name: "Centre Industriel", cost: 75000, incomePerClient: 20, maintenance: 1500, icon: '🏭' },
-    { id: 3, name: "Empire Casino", cost: 300000, incomePerClient: 100, maintenance: 8000, icon: '🎰' }
-  ];
-
-  onMount(async () => {
-    const L = await import('leaflet');
-    import('leaflet/dist/leaflet.css');
-    map = L.map('map', {zoomControl: false}).setView([45.8336, 1.2611], 13);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
-  });
-
-  // --- LOGIQUE FINANCIÈRE JOURNALIÈRE ---
   function nextDay() {
     player.day++;
-    
-    // Calcul du flux de clients : Base * Marketing
-    let dailyClients = Math.floor(player.clients * (1 + (player.marketingLevel * 0.5)));
-    
-    // Calcul Revenus et Frais
-    let rawIncome = 0;
-    let totalCosts = 0;
-    
-    player.properties.forEach(p => {
-        rawIncome += (dailyClients * p.incomePerClient);
-        totalCosts += p.maintenance;
-    });
-
-    let dailyProfit = rawIncome - totalCosts;
-    player.cash += dailyProfit;
-
-    player.history = [`Jour ${player.day-1}: Profit de ${dailyProfit}$ (${dailyClients} clients)`, ...player.history].slice(0, 5);
-    player = player; // Refresh
-    alert(`📅 BILAN JOUR ${player.day-1} COMPLÉTÉ`);
+    let profit = player.properties.length * 2500;
+    player.cash += profit;
+    logs = [`Jour ${player.day-1} : +${profit}$ de revenus`, ...logs].slice(0, 3);
   }
 
-  function investMarketing() {
-    let cost = player.marketingLevel * 10000;
-    if (player.cash >= cost) {
-        player.cash -= cost;
-        player.marketingLevel++;
-        player.clients += 50;
-    }
-  }
-
-  function buyBusiness(biz) {
-    if (player.cash >= biz.cost) {
-        player.cash -= biz.cost;
-        player.properties = [...player.properties, biz];
-    } else {
-        alert("Fonds insuffisants !");
-    }
-  }
-
-  const menu = ['Carte GPS', 'Mes Entreprises', 'Marché', 'Marketing', 'Holdings', 'Braquages', 'Loterie'];
+  const menu = ['Carte GPS', 'Mes Entreprises', 'Marché', 'Marketing', 'Holdings', 'Braquages'];
 </script>
 
-<main>
+<main style="background-image: url('https://images.unsplash.com/photo-1514924013411-cbf25faa35bb?auto=format&fit=crop&w=1920&q=80');">
+  
   <header class="hud">
-    <div class="logo">👑 {player.holdingName}</div>
+    <div class="logo">👑 GEO EMPIRE</div>
     <div class="stats">
       <div class="stat"><span class="lbl">CASH</span><span class="val gold">{player.cash.toLocaleString()}$</span></div>
-      <div class="stat"><span class="lbl">CLIENTS</span><span class="val blue">{player.clients}</span></div>
-      <div class="stat"><span class="lbl">FILIALES</span><span class="val pink">{player.properties.length}</span></div>
+      <div class="stat"><span class="lbl">CROWNS</span><span class="val pink">{player.crowns}</span></div>
+      <div class="stat"><span class="lbl">JOUR</span><span class="val blue">{player.day}</span></div>
     </div>
-    <button class="day-btn" on:click={nextDay}>TERMINER JOUR {player.day}</button>
+    <button class="day-btn" on:click={nextDay}>FINIR LA JOURNÉE</button>
   </header>
 
   <div class="wrapper">
     <nav class="sidebar">
+      <div class="nav-title">⚡ NAVIGATION</div>
       {#each menu as item}
         <button class="nav-btn" class:active={activeTab === item} on:click={() => activeTab = item}>
           {item}
@@ -96,82 +43,81 @@
     </nav>
 
     <section class="screen">
-      {#if activeTab === 'Carte GPS'}
-        <div id="map"></div>
-      
-      {:else if activeTab === 'Marché'}
-        <div class="content">
-          <h2>🛒 Acquisition de Filiales</h2>
-          <div class="grid">
-            {#each catalog as item}
-              <div class="card">
-                <span class="icon">{item.icon}</span>
-                <h3>{item.name}</h3>
-                <p>Coût: <b class="gold">{item.cost}$</b></p>
-                <p>Gain/Client: +{item.incomePerClient}$</p>
-                <button on:click={() => buyBusiness(item)}>ACHETER</button>
-              </div>
-            {/each}
-          </div>
-        </div>
-
-      {:else if activeTab === 'Marketing'}
-        <div class="content">
-            <h2>📢 Département Marketing</h2>
-            <div class="card wide">
-                <h3>Campagne de Publicité (Nv.{player.marketingLevel})</h3>
-                <p>Augmente le flux de clients journaliers de 50% par niveau.</p>
-                <button class="gold-btn" on:click={investMarketing}>Investir {player.marketingLevel * 10000}$</button>
-            </div>
-        </div>
-
-      {:else if activeTab === 'Mes Entreprises'}
-        <div class="content">
-            <h2>🏢 Patrimoine Actuel</h2>
-            <div class="grid">
-                {#each player.properties as p}
-                    <div class="card">
-                        <span class="icon">{p.icon}</span>
-                        <h4>{p.name}</h4>
-                        <p>Maintenance: -{p.maintenance}$</p>
-                    </div>
+      <div class="glass-container">
+        {#if activeTab === 'Carte GPS'}
+          <div class="gps-view">
+            <h2>📍 SCANNER GPS ACTIF</h2>
+            <div class="radar">
+                <div class="beam"></div>
+                <div class="center-dot"></div>
+                {#each player.properties as _, i}
+                    <div class="poi" style="top:{40 + i*10}%; left:{50 + i*5}%">🏢</div>
                 {/each}
             </div>
-        </div>
-      {/if}
+            <p class="location-text">Localisation : Secteur Limoges / Côte d'Azur</p>
+          </div>
+        {:else if activeTab === 'Marché'}
+          <div class="content">
+            <h2>🛒 Marché Mondial</h2>
+            <p>Sélectionnez un actif à acquérir...</p>
+            <button class="buy-btn" on:click={() => player.properties = [...player.properties, {}]}>
+                Acheter Filiale (15,000$)
+            </button>
+          </div>
+        {:else}
+          <div class="content">
+            <h2>{activeTab}</h2>
+            <p>Accès restreint - Chargement des données...</p>
+          </div>
+        {/if}
+      </div>
     </section>
+  </div>
+
+  <div class="terminal">
+    {#each logs as log}<p>> {log}</p>{/each}
   </div>
 </main>
 
 <style>
-  :global(body) { margin: 0; background: #000; color: #fff; font-family: 'Inter', sans-serif; overflow: hidden; }
+  :global(body) { margin: 0; background: #000; color: white; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
   
-  .hud { height: 80px; background: #111; display: flex; align-items: center; justify-content: space-between; padding: 0 30px; border-bottom: 2px solid #f1c40f; }
-  .logo { font-size: 1.8rem; font-weight: 900; color: #f1c40f; }
-  .stats { display: flex; gap: 40px; }
-  .stat { text-align: center; }
-  .lbl { display: block; font-size: 0.7rem; color: #666; }
-  .val { font-size: 1.2rem; font-weight: bold; }
+  main { height: 100vh; background-size: cover; background-position: center; display: flex; flex-direction: column; }
+
+  /* HUD SUPERIEUR */
+  .hud { height: 80px; background: rgba(0, 0, 0, 0.9); display: flex; align-items: center; justify-content: space-between; padding: 0 30px; border-bottom: 2px solid #f1c40f; z-index: 10; }
+  .logo { font-size: 1.5rem; font-weight: 900; color: #f1c40f; text-shadow: 0 0 10px rgba(241, 196, 15, 0.5); }
+  .stats { display: flex; gap: 30px; }
+  .lbl { display: block; font-size: 0.7rem; color: #aaa; text-transform: uppercase; }
+  .val { font-size: 1.1rem; font-weight: bold; }
   .gold { color: #f1c40f; } .blue { color: #3498db; } .pink { color: #e84393; }
+  .day-btn { background: #f1c40f; color: black; border: none; padding: 10px 20px; font-weight: bold; border-radius: 4px; cursor: pointer; }
 
-  .day-btn { background: #f1c40f; color: #000; border: none; padding: 10px 20px; font-weight: bold; border-radius: 5px; cursor: pointer; }
+  .wrapper { display: flex; flex: 1; overflow: hidden; }
 
-  .wrapper { display: flex; height: calc(100vh - 82px); }
-  .sidebar { width: 220px; background: #0a0a0a; border-right: 1px solid #222; padding: 15px; display: flex; flex-direction: column; gap: 8px; }
-  
-  .nav-btn { background: transparent; border: none; color: #888; padding: 15px; text-align: left; cursor: pointer; border-radius: 8px; font-size: 0.9rem; }
-  .nav-btn:hover { background: #1a1a1a; color: #fff; }
-  .nav-btn.active { background: #f1c40f; color: #000; font-weight: bold; }
+  /* NAVIGATION LATERALE - NOIR OPAQUE */
+  .sidebar { width: 240px; background: rgba(0, 0, 0, 0.85); border-right: 1px solid rgba(241, 196, 15, 0.3); padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+  .nav-title { color: #f1c40f; font-size: 0.8rem; font-weight: bold; margin-bottom: 15px; letter-spacing: 1px; }
+  .nav-btn { background: rgba(255, 255, 255, 0.05); border: none; color: #ccc; padding: 15px; text-align: left; border-radius: 8px; cursor: pointer; transition: 0.3s; }
+  .nav-btn:hover { background: rgba(241, 196, 15, 0.2); color: white; }
+  .nav-btn.active { background: #f1c40f; color: black; font-weight: bold; }
 
-  .screen { flex: 1; background: #050505; overflow-y: auto; }
-  #map { height: 100%; width: 100%; }
+  /* ZONE DE JEU */
+  .screen { flex: 1; padding: 40px; display: flex; justify-content: center; align-items: flex-start; }
+  .glass-container { background: rgba(0, 0, 0, 0.9); width: 100%; max-width: 900px; min-height: 500px; border-radius: 15px; border: 1px solid rgba(255, 255, 255, 0.1); padding: 30px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
 
-  .content { padding: 40px; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
-  .card { background: #111; padding: 25px; border-radius: 12px; border: 1px solid #222; text-align: center; }
-  .card.wide { max-width: 500px; margin: 0 auto; }
-  .icon { font-size: 3rem; display: block; margin-bottom: 10px; }
-  
-  button { margin-top: 15px; width: 100%; padding: 12px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; background: #3498db; color: white; }
-  .gold-btn { background: #f1c40f; color: #000; }
+  /* VUE RADAR GPS */
+  .gps-view { text-align: center; }
+  .radar { width: 300px; height: 300px; border: 2px solid #f1c40f; border-radius: 50%; margin: 40px auto; position: relative; background: rgba(241, 196, 15, 0.05); overflow: hidden; }
+  .beam { width: 50%; height: 2px; background: linear-gradient(to right, transparent, #f1c40f); position: absolute; top: 50%; left: 50%; transform-origin: left center; animation: spin 4s linear infinite; }
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  .center-dot { width: 10px; height: 10px; background: #f1c40f; border-radius: 50%; position: absolute; top: 48%; left: 48%; box-shadow: 0 0 15px #f1c40f; }
+  .poi { position: absolute; font-size: 1.5rem; filter: drop-shadow(0 0 5px gold); }
+  .location-text { color: #f1c40f; font-family: monospace; margin-top: 20px; }
+
+  .content { text-align: center; }
+  .buy-btn { background: #3498db; color: white; border: none; padding: 15px 30px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 20px; }
+
+  /* TERMINAL BAS DE PAGE */
+  .terminal { height: 90px; background: rgba(0, 0, 0, 0.95); padding: 15px 30px; font-family: monospace; color: #2ecc71; border-top: 1px solid #333; }
 </style>
