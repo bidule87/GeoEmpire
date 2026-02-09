@@ -3,31 +3,56 @@
 
   let geo = 50000;
   let tpCards = 13;
-  let activeTab = 'GPS';
-  let logs = ["Interface Mobile activée."];
+  let marketingLevel = 1;
+  let activeTab = 'CARTE'; // CARTE, POSSESSIONS, MARKETING
+  let logs = ["Beta-test : Système synchronisé sur minuit."];
   let userPos = { lat: 45.8336, lon: 1.2611 };
 
-  let shops = [
-    { id: 1, name: "Boulangerie", price: 15000, type: "🥖", top: "35%", left: "40%" },
-    { id: 2, name: "Bar Tabac", price: 25000, type: "🍺", top: "25%", left: "65%" },
-    { id: 3, name: "Epicerie", price: 45000, type: "🛒", top: "55%", left: "50%" }
+  // Base de données locale des commerces
+  let properties = [
+    { id: 1, name: "Boulangerie République", price: 15000, baseRent: 500, owned: false, type: "🥖", top: "35%", left: "40%" },
+    { id: 2, name: "Tabac de la Gare", price: 25000, baseRent: 1200, owned: false, type: "🍺", top: "25%", left: "65%" },
+    { id: 3, name: "Immobilier Centre", price: 85000, baseRent: 4500, owned: false, type: "🏢", top: "55%", left: "50%" }
   ];
 
   onMount(() => {
+    // GPS HAUTE PRÉCISION
     if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition((position) => {
+      navigator.geolocation.watchPosition((position) => {
         userPos.lat = position.coords.latitude;
         userPos.lon = position.coords.longitude;
-        logs = ["GPS Connecté.", ...logs];
-      });
+      }, null, { enableHighAccuracy: true });
     }
+
+    // CYCLE DE MINUIT (Vérification toutes les minutes pour plus de stabilité)
+    const midnightInterval = setInterval(() => {
+      const now = new Date();
+      if (now.getHours() === 0 && now.getMinutes() === 0) {
+        processDailyEarnings();
+      }
+    }, 60000);
+
+    return () => clearInterval(midnightInterval);
   });
 
-  function buyShop(shop) {
-    if (geo >= shop.price) {
-      geo -= shop.price;
-      logs = [`Acquis : ${shop.name}`, ...logs];
-      shops = shops.filter(s => s.id !== shop.id);
+  function processDailyEarnings() {
+    let total = properties.filter(p => p.owned).reduce((s, p) => s + (p.baseRent * marketingLevel), 0);
+    if (total > 0) {
+      geo += total;
+      logs = [`[MINUIT] Revenus collectés : +${total} G`, ...logs];
+    }
+  }
+
+  function buyProperty(prop) {
+    if (!prop.owned && geo >= prop.price) {
+      geo -= prop.price;
+      prop.owned = true;
+      properties = properties; // Trigger update
+      logs = [`Acquis : ${prop.name}. Prochain loyer à minuit.`, ...logs];
+    } else if (prop.owned) {
+      logs = ["Vous possédez déjà ce bien.", ...logs];
+    } else {
+      logs = ["GEO insuffisants.", ...logs];
     }
   }
 </script>
@@ -35,104 +60,104 @@
 <main>
   <header>
     <div class="logo">👑 GEO EMPIRE</div>
-    <div class="top-stats">
-        <div class="stat-item">🟡 {geo.toLocaleString()}</div>
-        <div class="stat-item">🎫 {tpCards}</div>
+    <div class="main-stats">
+        <span>🟡 {geo.toLocaleString()}</span>
+        <span>🎫 {tpCards}</span>
     </div>
   </header>
 
-  <section class="main-view">
-    {#if activeTab === 'GPS'}
-      <div class="map-wrapper">
+  <nav class="top-nav">
+    <button class:atv={activeTab==='CARTE'} on:click={()=>activeTab='CARTE'}>📍 CARTE</button>
+    <button class:atv={activeTab==='BIENS'} on:click={()=>activeTab='BIENS'}>🏢 BIENS</button>
+    <button class:atv={activeTab==='MKT'} on:click={()=>activeTab='MKT'}>📈 MKT</button>
+  </nav>
+
+  <section class="content">
+    {#if activeTab === 'CARTE'}
+      <div class="map-view">
         <iframe 
-          title="Map"
-          src="https://www.openstreetmap.org/export/embed.html?bbox={userPos.lon-0.01},{userPos.lat-0.005},{userPos.lon+0.01},{userPos.lat+0.005}&layer=mapnik"
-          style="filter: invert(90%) hue-rotate(180deg) brightness(0.7) contrast(1.2);">
+          title="GPS"
+          src="https://www.openstreetmap.org/export/embed.html?bbox={userPos.lon-0.003},{userPos.lat-0.002},{userPos.lon+0.003},{userPos.lat+0.002}&layer=mapnik&marker={userPos.lat},{userPos.lon}"
+          style="filter: invert(90%) hue-rotate(180deg) brightness(0.65) contrast(1.2);">
         </iframe>
         
-        <div class="mobile-radar">
-            <div class="main-circle"></div>
-            <div class="scan-line"></div>
-        </div>
+        <div class="radar-circle"></div>
 
-        {#each shops as shop}
-          <button class="marker" style="top:{shop.top}; left:{shop.left}" on:click={() => buyShop(shop)}>
-            <span class="m-icon">{shop.type}</span>
-            <span class="m-price">{shop.price}</span>
+        {#each properties as p}
+          <button class="map-marker {p.owned ? 'owned' : ''}" 
+                  style="top:{p.top}; left:{p.left}" 
+                  on:click={() => buyProperty(p)}>
+            {p.type} <br> <span class="price-tag">{p.owned ? 'OK' : p.price}</span>
           </button>
         {/each}
       </div>
-    {:else}
-      <div class="menu-overlay">
-        <h2>MODULE BRAQUAGE</h2>
-        <p>Synchronisation avec les serveurs de la ville...</p>
+
+    {:else if activeTab === 'BIENS'}
+      <div class="list-view">
+          <h3>MES POSSESSIONS</h3>
+          {#each properties.filter(p => p.owned) as p}
+            <div class="card">
+                <span class="card-icon">{p.type}</span>
+                <div class="card-info">
+                    <b>{p.name}</b><br>
+                    <small>Loyer journalier : {p.baseRent * marketingLevel} G</small>
+                </div>
+                <div class="status">EN GESTION</div>
+            </div>
+          {:else}
+            <p class="empty-msg">Aucun bien acquis dans ce secteur.</p>
+          {/each}
+      </div>
+
+    {:else if activeTab === 'MKT'}
+      <div class="list-view">
+          <h3>MARKETING & INFLUENCE</h3>
+          <div class="mkt-box">
+              <p>Niveau actuel : <b>{marketingLevel}</b></p>
+              <p>Multiplicateur de gains : <b>x{marketingLevel}</b></p>
+              <button class="buy-btn" on:click={() => { if(geo>=10000){ geo-=10000; marketingLevel++; logs=["Marketing amélioré !", ...logs]; } }}>
+                  AMÉLIORER (10 000 G)
+              </button>
+          </div>
+          <p class="info-text">Le marketing augmente les revenus immobiliers lors de la mise à jour de minuit.</p>
       </div>
     {/if}
   </section>
 
-  <nav class="tab-bar">
-    <button class:active={activeTab==='GPS'} on:click={()=>activeTab='GPS'}>📍 CARTE</button>
-    <button class:active={activeTab==='HEIST'} on:click={()=>activeTab='HEIST'}>🏴‍☠️ BRAQUAGES</button>
-    <button class="special" on:click={() => tpCards++}>🎫 PACK</button>
-  </nav>
-
-  <div class="status-bar">> {logs[0]}</div>
+  <div class="terminal">> {logs[0]}</div>
 </main>
 
 <style>
   :global(body) { margin:0; background:#000; color:white; font-family: 'Segoe UI', sans-serif; overflow:hidden; }
   
-  header { 
-    height: 50px; background: #000; display: flex; align-items: center; 
-    justify-content: space-between; padding: 0 15px; border-bottom: 1px solid #f1c40f;
-  }
-  .logo { font-weight: 900; font-size: 0.9rem; color: #f1c40f; }
-  .top-stats { display: flex; gap: 15px; font-weight: bold; font-size: 0.85rem; }
+  header { height: 50px; background: #000; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid #333; }
+  .logo { font-weight: 900; color: #f1c40f; font-size: 0.9rem; }
+  .main-stats { font-weight: bold; font-size: 0.8rem; display: flex; gap: 10px; }
 
-  .main-view { height: calc(100vh - 110px); width: 100vw; position: relative; }
+  /* NAVIGATION EN HAUT */
+  .top-nav { height: 50px; background: #0a0a0a; display: flex; border-bottom: 2px solid #f1c40f; }
+  .top-nav button { flex: 1; background: none; border: none; color: #666; font-weight: bold; font-size: 0.75rem; letter-spacing: 1px; }
+  .top-nav button.atv { color: #f1c40f; background: rgba(241,196,15,0.05); }
 
-  .map-wrapper { width: 100%; height: 100%; position: relative; }
+  .content { height: calc(100vh - 100px); position: relative; overflow-y: auto; }
+  .map-view { width: 100%; height: 100%; position: relative; }
   iframe { width: 100%; height: 100%; border: none; }
 
-  /* RADAR OPTIMISÉ POUR TOUS ÉCRANS */
-  .mobile-radar {
-    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    width: 70vw; height: 70vw; max-width: 320px; max-height: 320px;
-    pointer-events: none; z-index: 5;
-  }
-  .main-circle { 
-    position: absolute; inset: 0; border: 2px solid #f1c40f; border-radius: 50%; 
-    box-shadow: 0 0 15px rgba(241, 196, 15, 0.4);
-  }
-  .scan-line {
-    position: absolute; inset: 0; border: 1px solid rgba(241, 196, 15, 0.3);
-    border-radius: 50%; animation: pulse 2s infinite ease-out;
-  }
-  @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(1.3); opacity: 0; } }
+  .radar-circle { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 280px; height: 280px; border: 2px solid #f1c40f; border-radius: 50%; pointer-events: none; opacity: 0.4; }
 
-  /* BOUTONS COMMERCES */
-  .marker {
-    position: absolute; background: rgba(0,0,0,0.85); border: 1px solid #f1c40f;
-    padding: 5px 10px; border-radius: 15px; color: white; display: flex; 
-    flex-direction: column; align-items: center; cursor: pointer; z-index: 10;
-  }
-  .m-icon { font-size: 1.2rem; }
-  .m-price { font-size: 10px; color: #f1c40f; font-weight: bold; }
+  .map-marker { position: absolute; background: rgba(0,0,0,0.9); border: 1px solid #f1c40f; padding: 5px; border-radius: 8px; color: white; cursor: pointer; min-width: 50px; font-size: 1.2rem; }
+  .map-marker.owned { border-color: #2ecc71; color: #2ecc71; }
+  .price-tag { font-size: 8px; font-weight: bold; display: block; }
 
-  /* TAB BAR (BAS DE L'ÉCRAN) */
-  .tab-bar {
-    height: 60px; background: #050505; display: flex; border-top: 1px solid #222;
-  }
-  .tab-bar button {
-    flex: 1; background: none; border: none; color: #666; font-weight: bold; font-size: 0.7rem;
-  }
-  .tab-bar button.active { color: #f1c40f; }
-  .tab-bar button.special { color: #e74c3c; }
+  .list-view { padding: 20px; }
+  .card { background: #111; border: 1px solid #333; padding: 15px; border-radius: 8px; display: flex; align-items: center; margin-bottom: 10px; gap: 15px; }
+  .card-icon { font-size: 1.5rem; }
+  .card-info { flex: 1; font-size: 0.8rem; }
+  .status { font-size: 10px; color: #2ecc71; font-weight: bold; }
 
-  .status-bar {
-    position: fixed; bottom: 65px; left: 10px; font-family: monospace;
-    font-size: 10px; color: #2ecc71; pointer-events: none;
-  }
+  .mkt-box { background: #111; padding: 20px; border-radius: 8px; text-align: center; border: 1px solid #f1c40f; }
+  .buy-btn { background: #f1c40f; border: none; padding: 10px 20px; border-radius: 4px; font-weight: bold; margin-top: 10px; }
 
-  .menu-overlay { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 20px; text-align: center; }
+  .terminal { position: fixed; bottom: 10px; left: 15px; font-family: monospace; font-size: 11px; color: #2ecc71; pointer-events: none; }
+  .empty-msg { color: #444; text-align: center; margin-top: 40px; }
 </style>
