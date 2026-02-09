@@ -1,86 +1,142 @@
 <script>
   import { onMount } from 'svelte';
 
+  // --- SYSTÈME DE JEU INTÉGRAL ---
   let player = {
-    cash: 250000,
-    gToken: 0,
-    crowns: 928,
+    cash: 50000,
+    gToken: 10,
     holdingName: "GEO EMPIRE",
     day: 1,
-    clients: 1500,
-    marketing: 1,
-    properties: []
+    clients: 100, // Clients de base
+    marketingLevel: 1,
+    properties: [],
+    history: []
   };
 
   let activeTab = 'Carte GPS';
   let map;
 
-  // Importation dynamique de Leaflet pour éviter les erreurs SSR
+  // --- CATALOGUE DES ENTREPRISES ---
+  const catalog = [
+    { id: 1, name: "Commerce de Rue", cost: 15000, incomePerClient: 5, maintenance: 200, icon: '🏠' },
+    { id: 2, name: "Centre Industriel", cost: 75000, incomePerClient: 20, maintenance: 1500, icon: '🏭' },
+    { id: 3, name: "Empire Casino", cost: 300000, incomePerClient: 100, maintenance: 8000, icon: '🎰' }
+  ];
+
   onMount(async () => {
     const L = await import('leaflet');
     import('leaflet/dist/leaflet.css');
-
-    map = L.map('map').setView([45.8336, 1.2611], 13); // Centré sur Limoges comme ta capture
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-    // Ajout d'un cercle de zone comme sur ton image
-    L.circle([45.8336, 1.2611], {
-      color: '#f1c40f',
-      fillColor: '#f1c40f',
-      fillOpacity: 0.1,
-      radius: 2000
-    }).addTo(map);
+    map = L.map('map', {zoomControl: false}).setView([45.8336, 1.2611], 13);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
   });
 
-  function processDay() {
+  // --- LOGIQUE FINANCIÈRE JOURNALIÈRE ---
+  function nextDay() {
     player.day++;
-    let revenue = (player.clients * (player.properties.length + 1) * 2);
-    player.cash += revenue;
-    alert(`Bilan Jour ${player.day-1} : +${revenue} GEO`);
+    
+    // Calcul du flux de clients : Base * Marketing
+    let dailyClients = Math.floor(player.clients * (1 + (player.marketingLevel * 0.5)));
+    
+    // Calcul Revenus et Frais
+    let rawIncome = 0;
+    let totalCosts = 0;
+    
+    player.properties.forEach(p => {
+        rawIncome += (dailyClients * p.incomePerClient);
+        totalCosts += p.maintenance;
+    });
+
+    let dailyProfit = rawIncome - totalCosts;
+    player.cash += dailyProfit;
+
+    player.history = [`Jour ${player.day-1}: Profit de ${dailyProfit}$ (${dailyClients} clients)`, ...player.history].slice(0, 5);
+    player = player; // Refresh
+    alert(`📅 BILAN JOUR ${player.day-1} COMPLÉTÉ`);
   }
 
-  const menu = [
-    'Carte GPS', 'Mes Entreprises', 'Holdings', 'Finances', 
-    'Marché', 'Loterie', 'Braquages', 'Ma Ville', 'Classement'
-  ];
+  function investMarketing() {
+    let cost = player.marketingLevel * 10000;
+    if (player.cash >= cost) {
+        player.cash -= cost;
+        player.marketingLevel++;
+        player.clients += 50;
+    }
+  }
+
+  function buyBusiness(biz) {
+    if (player.cash >= biz.cost) {
+        player.cash -= biz.cost;
+        player.properties = [...player.properties, biz];
+    } else {
+        alert("Fonds insuffisants !");
+    }
+  }
+
+  const menu = ['Carte GPS', 'Mes Entreprises', 'Marché', 'Marketing', 'Holdings', 'Braquages', 'Loterie'];
 </script>
 
 <main>
   <header class="hud">
-    <div class="logo">👑 GEO EMPIRE</div>
-    <div class="stats-container">
-      <div class="stat-box"><span class="label">JOUEUR</span><span class="val gold">BIDULE</span></div>
-      <div class="stat-box"><span class="label">💰 GEO</span><span class="val gold">{Math.floor(player.cash / 1000)}K</span></div>
-      <div class="stat-box"><span class="label">💎 G-TOKEN</span><span class="val blue">{player.gToken}</span></div>
-      <div class="stat-box"><span class="label">👑 CROWNS</span><span class="val pink">{player.crowns}</span></div>
-      <div class="stat-box"><span class="label">📊 PATRIMOINE</span><span class="val gold">261K GEO</span></div>
+    <div class="logo">👑 {player.holdingName}</div>
+    <div class="stats">
+      <div class="stat"><span class="lbl">CASH</span><span class="val gold">{player.cash.toLocaleString()}$</span></div>
+      <div class="stat"><span class="lbl">CLIENTS</span><span class="val blue">{player.clients}</span></div>
+      <div class="stat"><span class="lbl">FILIALES</span><span class="val pink">{player.properties.length}</span></div>
     </div>
-    <button class="btn-exit">DÉCONNEXION</button>
+    <button class="day-btn" on:click={nextDay}>TERMINER JOUR {player.day}</button>
   </header>
 
-  <div class="game-body">
+  <div class="wrapper">
     <nav class="sidebar">
-      <div class="nav-title">⚡ NAVIGATION</div>
       {#each menu as item}
-        <button class="nav-item" class:active={activeTab === item} on:click={() => activeTab = item}>
+        <button class="nav-btn" class:active={activeTab === item} on:click={() => activeTab = item}>
           {item}
         </button>
       {/each}
     </nav>
 
-    <section class="viewport">
+    <section class="screen">
       {#if activeTab === 'Carte GPS'}
         <div id="map"></div>
-      {:else if activeTab === 'Holdings'}
-        <div class="content-view">
-          <h2>Gestion de la Holding</h2>
-          <p>Jour actuel : {player.day}</p>
-          <button class="action-btn" on:click={processDay}>Lancer la mise à jour journalière</button>
+      
+      {:else if activeTab === 'Marché'}
+        <div class="content">
+          <h2>🛒 Acquisition de Filiales</h2>
+          <div class="grid">
+            {#each catalog as item}
+              <div class="card">
+                <span class="icon">{item.icon}</span>
+                <h3>{item.name}</h3>
+                <p>Coût: <b class="gold">{item.cost}$</b></p>
+                <p>Gain/Client: +{item.incomePerClient}$</p>
+                <button on:click={() => buyBusiness(item)}>ACHETER</button>
+              </div>
+            {/each}
+          </div>
         </div>
-      {:else}
-        <div class="content-view">
-          <h2>{activeTab}</h2>
-          <p>Contenu en cours de déploiement...</p>
+
+      {:else if activeTab === 'Marketing'}
+        <div class="content">
+            <h2>📢 Département Marketing</h2>
+            <div class="card wide">
+                <h3>Campagne de Publicité (Nv.{player.marketingLevel})</h3>
+                <p>Augmente le flux de clients journaliers de 50% par niveau.</p>
+                <button class="gold-btn" on:click={investMarketing}>Investir {player.marketingLevel * 10000}$</button>
+            </div>
+        </div>
+
+      {:else if activeTab === 'Mes Entreprises'}
+        <div class="content">
+            <h2>🏢 Patrimoine Actuel</h2>
+            <div class="grid">
+                {#each player.properties as p}
+                    <div class="card">
+                        <span class="icon">{p.icon}</span>
+                        <h4>{p.name}</h4>
+                        <p>Maintenance: -{p.maintenance}$</p>
+                    </div>
+                {/each}
+            </div>
         </div>
       {/if}
     </section>
@@ -88,32 +144,34 @@
 </main>
 
 <style>
-  :global(body) { margin: 0; background: #000; color: white; font-family: 'Arial', sans-serif; overflow: hidden; }
+  :global(body) { margin: 0; background: #000; color: #fff; font-family: 'Inter', sans-serif; overflow: hidden; }
   
-  .hud { height: 70px; background: #1a1a1a; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 2px solid #333; }
-  .logo { color: #f1c40f; font-weight: bold; font-size: 1.5rem; letter-spacing: 2px; }
-  
-  .stats-container { display: flex; gap: 15px; }
-  .stat-box { background: #333; padding: 5px 15px; border-radius: 8px; border: 1px solid #444; min-width: 100px; text-align: center; }
-  .label { display: block; font-size: 0.6rem; color: #888; margin-bottom: 2px; }
-  .val { font-weight: bold; font-size: 0.9rem; }
-  
+  .hud { height: 80px; background: #111; display: flex; align-items: center; justify-content: space-between; padding: 0 30px; border-bottom: 2px solid #f1c40f; }
+  .logo { font-size: 1.8rem; font-weight: 900; color: #f1c40f; }
+  .stats { display: flex; gap: 40px; }
+  .stat { text-align: center; }
+  .lbl { display: block; font-size: 0.7rem; color: #666; }
+  .val { font-size: 1.2rem; font-weight: bold; }
   .gold { color: #f1c40f; } .blue { color: #3498db; } .pink { color: #e84393; }
 
-  .game-body { display: flex; height: calc(100vh - 72px); }
+  .day-btn { background: #f1c40f; color: #000; border: none; padding: 10px 20px; font-weight: bold; border-radius: 5px; cursor: pointer; }
 
-  .sidebar { width: 250px; background: #000; border-right: 2px solid #f1c40f; padding: 10px; display: flex; flex-direction: column; gap: 5px; }
-  .nav-title { color: #f1c40f; font-weight: bold; padding: 10px; font-size: 0.8rem; border-bottom: 1px solid #222; margin-bottom: 10px; }
+  .wrapper { display: flex; height: calc(100vh - 82px); }
+  .sidebar { width: 220px; background: #0a0a0a; border-right: 1px solid #222; padding: 15px; display: flex; flex-direction: column; gap: 8px; }
   
-  .nav-item { background: transparent; border: none; color: #ccc; padding: 12px; text-align: left; cursor: pointer; border-radius: 8px; transition: 0.3s; font-size: 0.9rem; }
-  .nav-item:hover { background: #222; color: #f1c40f; }
-  .nav-item.active { background: linear-gradient(90deg, #f1c40f, #d4af37); color: black; font-weight: bold; }
+  .nav-btn { background: transparent; border: none; color: #888; padding: 15px; text-align: left; cursor: pointer; border-radius: 8px; font-size: 0.9rem; }
+  .nav-btn:hover { background: #1a1a1a; color: #fff; }
+  .nav-btn.active { background: #f1c40f; color: #000; font-weight: bold; }
 
-  .viewport { flex: 1; position: relative; background: #111; }
+  .screen { flex: 1; background: #050505; overflow-y: auto; }
   #map { height: 100%; width: 100%; }
 
-  .content-view { padding: 40px; text-align: center; }
-  .action-btn { background: #f1c40f; color: black; border: none; padding: 15px 30px; font-weight: bold; border-radius: 5px; cursor: pointer; }
-
-  .btn-exit { background: #f1c40f; color: black; border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; }
+  .content { padding: 40px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
+  .card { background: #111; padding: 25px; border-radius: 12px; border: 1px solid #222; text-align: center; }
+  .card.wide { max-width: 500px; margin: 0 auto; }
+  .icon { font-size: 3rem; display: block; margin-bottom: 10px; }
+  
+  button { margin-top: 15px; width: 100%; padding: 12px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; background: #3498db; color: white; }
+  .gold-btn { background: #f1c40f; color: #000; }
 </style>
