@@ -3,26 +3,22 @@
 
   let geo = 50000;
   let tpCards = 13;
-  let activeTab = 'CARTE GPS';
-  let logs = ["Système GPS : Recherche de position..."];
-  let userPos = { lat: 45.8336, lon: 1.2611 }; // Limoges par défaut
+  let activeTab = 'GPS';
+  let logs = ["Système mobile optimisé."];
+  let userPos = { lat: 45.8336, lon: 1.2611 };
 
-  // Liste des commerces à proximité
   let shops = [
-    { id: 1, name: "Boulangerie Centrale", price: 15000, lat: 45.835, lon: 1.262, type: "🥖" },
-    { id: 2, name: "Bar de la Gare", price: 25000, lat: 45.836, lon: 1.258, type: "🍺" },
-    { id: 3, name: "Supérette Express", price: 45000, lat: 45.831, lon: 1.265, type: "🛒" }
+    { id: 1, name: "Boulangerie", price: 15000, lat: 45.835, lon: 1.262, type: "🥖", top: "40%", left: "40%" },
+    { id: 2, name: "Bar Tabac", price: 25000, lat: 45.836, lon: 1.258, type: "🍺", top: "30%", left: "60%" },
+    { id: 3, name: "Epicerie", price: 45000, lat: 45.831, lon: 1.265, type: "🛒", top: "65%", left: "50%" }
   ];
 
   onMount(() => {
-    // FONCTION POUR GÉOLOCALISER LE JOUEUR
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition((position) => {
         userPos.lat = position.coords.latitude;
         userPos.lon = position.coords.longitude;
-        logs = ["Position GPS verrouillée.", ...logs];
-      }, (err) => {
-        logs = ["Erreur GPS : Utilisation position par défaut (Limoges).", ...logs];
+        logs = ["Localisation GPS réussie.", ...logs];
       });
     }
   });
@@ -30,87 +26,104 @@
   function buyShop(shop) {
     if (geo >= shop.price) {
       geo -= shop.price;
-      logs = [`Achat réussi : ${shop.name} !`, ...logs];
-      shops = shops.filter(s => s.id !== shop.id); // On le retire de la map après achat
-    } else {
-      logs = ["Fonds insuffisants pour cet empire !", ...logs];
+      logs = [`Acheté: ${shop.name}`, ...logs];
+      shops = shops.filter(s => s.id !== shop.id);
     }
   }
 </script>
 
 <main>
-  <div class="city-bg"></div>
-
   <header>
     <div class="logo">👑 GEO EMPIRE</div>
     <div class="stats">
-      <div class="box"><span>GEO</span><b>{geo.toLocaleString()}</b></div>
-      <div class="box"><span>TP</span><b class="gold">{tpCards}</b></div>
+        <span>{geo.toLocaleString()} 🟡</span>
+        <span>{tpCards} 🎫</span>
     </div>
-    <button class="buy-btn">PACK 10x 🎫 (4.99€)</button>
   </header>
 
-  <div class="main-container">
-    <nav>
-      <button class:atv={activeTab==='CARTE GPS'} on:click={()=>activeTab='CARTE GPS'}>📍 CARTE GPS</button>
-      <button class:atv={activeTab==='BRAQUAGES'} on:click={()=>activeTab='BRAQUAGES'}>🏴‍☠️ BRAQUAGES</button>
-    </nav>
-
-    <section class="game-panel">
-      {#if activeTab === 'CARTE GPS'}
-        <div class="map-box">
-          <iframe 
-            title="GPS Map"
-            width="100%" height="100%" frameborder="0" 
-            src="https://www.openstreetmap.org/export/embed.html?bbox={userPos.lon-0.02},{userPos.lat-0.01},{userPos.lon+0.02},{userPos.lat+0.01}&layer=mapnik"
-            style="filter: invert(90%) hue-rotate(180deg) brightness(0.6) contrast(1.2);">
-          </iframe>
-          
-          <div class="fix-radar">
-             <div class="main-ring"></div>
-             <div class="pulse-ring"></div>
-          </div>
-
-          <div class="shop-layer">
-            {#each shops as shop}
-                <button class="shop-marker" on:click={() => buyShop(shop)}>
-                    <span class="icon">{shop.type}</span>
-                    <div class="info">{shop.name}<br><b>{shop.price} G</b></div>
-                </button>
-            {/each}
-          </div>
-          
-          <div class="status-tag">GPS: {userPos.lat.toFixed(3)}, {userPos.lon.toFixed(3)}</div>
+  <div class="content">
+    {#if activeTab === 'GPS'}
+      <div class="map-container">
+        <iframe 
+          title="Map"
+          src="https://www.openstreetmap.org/export/embed.html?bbox={userPos.lon-0.01},{userPos.lat-0.005},{userPos.lon+0.01},{userPos.lat+0.005}&layer=mapnik"
+          style="filter: invert(90%) hue-rotate(180deg) brightness(0.7);">
+        </iframe>
+        
+        <div class="radar-center">
+            <div class="ring"></div>
+            <div class="pulse"></div>
         </div>
-      {:else}
-        <div class="empty-state">
-          <h2>MODULE BRAQUAGE</h2>
-          <p>Recherche de commerces vulnérables dans votre zone...</p>
-        </div>
-      {/if}
-    </section>
+
+        {#each shops as shop}
+          <button class="marker" style="top:{shop.top}; left:{shop.left}" on:click={() => buyShop(shop)}>
+            {shop.type} <small>{shop.price}</small>
+          </button>
+        {each}
+      </div>
+    {:else}
+      <div class="menu-screen">
+        <h2>BRAQUAGES</h2>
+        <p>Cibles en cours de détection...</p>
+      </div>
+    {/if}
   </div>
 
-  <footer>
-    {#each logs.slice(0, 1) as log}<p>> {log}</p>{/each}
-  </footer>
+  <nav class="bottom-nav">
+    <button class:atv={activeTab==='GPS'} on:click={()=>activeTab='GPS'}>📍 CARTE</button>
+    <button class:atv={activeTab==='HEIST'} on:click={()=>activeTab='HEIST'}>🏴‍☠️ JOUEURS</button>
+    <button on:click={() => tpCards++}>🎫 PACK</button>
+  </nav>
+
+  <div class="mini-log">> {logs[0]}</div>
 </main>
 
 <style>
   :global(body) { margin:0; background:#000; color:white; font-family: sans-serif; overflow:hidden; }
-  .city-bg { position:fixed; inset:0; background:url('https://images.unsplash.com/photo-1514924013411-cbf25faa35bb?q=80&w=1920') center/cover; z-index:-1; opacity:0.15; }
-  header { height:70px; background:rgba(0,0,0,0.95); display:flex; align-items:center; justify-content:space-between; padding:0 25px; border-bottom:2px solid #f1c40f; }
-  .box b { color:#f1c40f; font-size:1.1rem; }
-  .gold { color:#f1c40f !important; }
-  .buy-btn { background:#e74c3c; color:white; border:none; padding:8px 15px; border-radius:4px; font-weight:bold; cursor:pointer; }
+  
+  header { 
+    height: 50px; background: #111; display: flex; align-items: center; 
+    justify-content: space-between; padding: 0 15px; border-bottom: 2px solid #f1c40f;
+    font-size: 0.8rem;
+  }
 
-  .main-container { display:flex; height:calc(100vh - 120px); }
-  nav { width:180px; background:rgba(10,10,10,0.98); border-right:1px solid #222; }
-  nav button { width:100%; background:none; border:none; color:#555; padding:20px; text-align:left; cursor:pointer; font-weight:bold; }
-  nav button.atv { color:#f1c40f; border-left:4px solid #f1c40f; background:rgba(241,196,15,0.05); }
+  .stats { font-weight: bold; color: #f1c40f; display: flex; gap: 10px; }
 
-  .game-panel { flex:1; margin:15px; background:#000; border:1px solid #333; border-radius:12px; overflow:hidden; position:relative; }
-  .map-box { width:100%; height:100%; position:relative; }
+  .content { height: calc(100vh - 110px); width: 100vw; position: relative; }
 
-  /* RADAR */
-  .fix-radar { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 340px; height: 34
+  .map-container { width: 100%; height: 100%; position: relative; overflow: hidden; }
+  iframe { width: 100%; height: 100%; border: none; }
+
+  /* RADAR MOBILE */
+  .radar-center {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 280px; height: 280px; pointer-events: none;
+  }
+  .ring { position: absolute; inset: 0; border: 2px solid #f1c40f; border-radius: 50%; box-shadow: 0 0 15px #f1c40f; }
+  .pulse { position: absolute; inset: 0; border: 1px solid #f1c40f; border-radius: 50%; animation: p 2s infinite; }
+  @keyframes p { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(1.3); opacity: 0; } }
+
+  /* MARKERS */
+  .marker {
+    position: absolute; background: rgba(0,0,0,0.8); border: 1px solid #f1c40f;
+    padding: 4px 8px; border-radius: 20px; color: white; font-size: 12px;
+    cursor: pointer; z-index: 10;
+  }
+
+  /* NAVIGATION BASSE (STYLE MOBILE) */
+  .bottom-nav {
+    height: 60px; background: #0a0a0a; display: flex; border-top: 1px solid #333;
+  }
+  .bottom-nav button {
+    flex: 1; background: none; border: none; color: #555; font-weight: bold; font-size: 0.7rem;
+  }
+  .bottom-nav button.atv { color: #f1c40f; background: rgba(241,196,15,0.1); }
+
+  .mini-log {
+    position: fixed; bottom: 70px; left: 10px; right: 10px; 
+    background: rgba(0,0,0,0.7); font-family: monospace; font-size: 10px; color: #2ecc71;
+    pointer-events: none;
+  }
+
+  .menu-screen { padding: 40px; text-align: center; color: #444; }
+</style>
