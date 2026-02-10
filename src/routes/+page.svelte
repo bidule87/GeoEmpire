@@ -1,92 +1,122 @@
 <script>
-  let geoBalance = 6157.92;
-  let logs = "Système GEO EMPIRE initialisé.";
+  // --- ÉTAT DE LA HOLDING ---
+  let capitalHolding = 150000;
+  let logs = "Système Holding prêt pour les injections et primes.";
 
-  // Données issues de tes captures
-  let entreprises = [
-    { id: 1, nom: "Acier 1", holding: "La Tour Sucrée", mkt: 3, view: 'business', marge: 10 },
-    { id: 2, nom: "Centrakor", holding: "MARIGNANT", mkt: 2, view: 'situation', marge: 0 }
+  // --- FILIALES ---
+  let filiales = [
+    { 
+      id: 1, 
+      nom: "Acier 1", 
+      treso: 12500,
+      primeDirecteur: 1500,
+      marketing: 3,
+      ongletActif: 'situation',
+      biens: [{ id: 101, nom: "Entrepôt Forge", valeur: 85000, type: "LOCATION", marge: 10 }]
+    }
   ];
 
-  const mktData = {
-    1: { label: "Médiocre", color: "#e74c3c" },
-    2: { label: "Correct", color: "#f1c40f" },
-    3: { label: "Excellent", color: "#2ecc71" }
-  };
+  // Injection de cash : Holding -> Filiale
+  function injecterCash(filialeId, montant) {
+    if (capitalHolding >= montant) {
+      capitalHolding -= montant;
+      let f = filiales.find(f => f.id === filialeId);
+      f.treso += montant;
+      filiales = [...filiales];
+      logs = `Injection de ${montant}$ réussie dans ${f.nom}.`;
+    } else {
+      logs = "Fonds insuffisants dans la Holding !";
+    }
+  }
 
-  function switchTab(id, tab) {
-    entreprises = entreprises.map(e => e.id === id ? {...e, view: tab} : e);
+  // Payer la prime : Filiale -> Directeur
+  function payerPrime(filialeId) {
+    let f = filiales.find(f => f.id === filialeId);
+    if (f.treso >= f.primeDirecteur) {
+      f.treso -= f.primeDirecteur;
+      filiales = [...filiales];
+      logs = `Prime de ${f.primeDirecteur}$ payée par ${f.nom}.`;
+    } else {
+      logs = `Trésorerie insuffisante dans ${f.nom} pour la prime !`;
+    }
   }
 </script>
 
 <main>
-  <header class="topbar">
-    <div class="logo">👑 GEO EMPIRE</div>
-    <div class="money">{geoBalance.toLocaleString()} $ ∅</div>
+  <header class="holding-header">
+    <div class="info">
+      <h1>🏦 GESTION HOLDING</h1>
+      <p>CAPITAL GLOBAL: <span class="gold">{capitalHolding.toLocaleString()} $ ∅</span></p>
+    </div>
   </header>
 
   <div class="content">
-    {#each entreprises as ent}
-      <div class="card">
-        <div class="card-head">
-          <div class="titles">
-            <h3>{ent.nom}</h3>
-            <span class="hold">{ent.holding}</span>
+    {#each filiales as fil}
+      <section class="filiale-node">
+        <header>
+          <h2>{fil.nom}</h2>
+          <div class="quick-actions">
+            <button class="btn-inj" on:click={() => injecterCash(fil.id, 5000)}>+ Injecter 5k$</button>
           </div>
-          <div class="mkt" style="color: {mktData[ent.mkt].color}; border-color: {mktData[ent.mkt].color}">
-            {mktData[ent.mkt].label}
-          </div>
-        </div>
+        </header>
 
         <nav class="tabs">
-          <button class:active={ent.view === 'situation'} on:click={() => switchTab(ent.id, 'situation')}>SITUATION</button>
-          <button class:active={ent.view === 'business'} on:click={() => switchTab(ent.id, 'business')}>BUSINESS</button>
+          <button class:active={fil.ongletActif === 'situation'} on:click={() => fil.ongletActif = 'situation'}>SITUATION</button>
+          <button class:active={fil.ongletActif === 'business'} on:click={() => fil.ongletActif = 'business'}>BUSINESS</button>
         </nav>
 
-        <div class="card-body">
-          {#if ent.view === 'situation'}
-            <div class="view-sit">
-              <div class="row"><span>Revenus :</span> <b class="green">+4 309 $ ∅</b></div>
-              <div class="row"><span>Trésorerie :</span> <b>12 500 $</b></div>
+        <div class="body">
+          {#if fil.ongletActif === 'situation'}
+            <div class="details">
+              <div class="row"><span>Trésorerie filiale :</span> <b>{fil.treso.toLocaleString()} $</b></div>
+              <div class="row">
+                <span>Prime Directeur :</span> 
+                <div class="prime-control">
+                  <input type="number" bind:value={fil.primeDirecteur}>
+                  <button on:click={() => payerPrime(fil.id)}>PAYER</button>
+                </div>
+              </div>
             </div>
           {:else}
-            <div class="view-biz">
-              <div class="slider">
-                <label>Négociation : {ent.marge}%</label>
-                <input type="range" min="-20" max="20" bind:value={ent.marge}>
-              </div>
-              <button class="btn gold">LOCATION (00:00)</button>
-              <button class="btn gray">VENTE (00:00)</button>
+            <div class="details">
+              {#each fil.biens as bien}
+                <div class="item">
+                  <span>{bien.nom}</span>
+                  <input type="range" min="-20" max="20" bind:value={bien.marge}>
+                  <span>Marge: {bien.marge}%</span>
+                </div>
+              {/each}
             </div>
           {/if}
         </div>
-      </div>
+      </section>
     {/each}
   </div>
 
-  <footer class="console">> {logs}</footer>
+  <div class="console">> {logs}</div>
 </main>
 
 <style>
-  :global(body) { margin: 0; background: #000; color: #fff; font-family: sans-serif; }
-  .topbar { display: flex; justify-content: space-between; padding: 15px; background: #111; border-bottom: 2px solid #f1c40f; }
-  .money { color: #f1c40f; font-weight: bold; }
-  .content { padding: 15px; padding-bottom: 50px; }
-  .card { background: #0a0a0a; border: 1px solid #222; border-radius: 8px; margin-bottom: 15px; overflow: hidden; }
-  .card-head { padding: 12px; display: flex; justify-content: space-between; align-items: center; background: #151515; }
-  .hold { font-size: 0.7rem; color: #666; }
-  .mkt { font-size: 0.6rem; border: 1px solid; padding: 2px 6px; border-radius: 10px; font-weight: bold; }
+  :global(body) { background: #050505; color: #ddd; font-family: 'Inter', sans-serif; margin: 0; }
+  .holding-header { background: #111; padding: 20px; border-bottom: 2px solid #f1c40f; }
+  .gold { color: #f1c40f; font-weight: bold; font-size: 1.2rem; }
+  
+  .content { padding: 20px; }
+  .filiale-node { background: #0a0a0a; border: 1px solid #222; border-radius: 8px; margin-bottom: 20px; overflow: hidden; }
+  .filiale-node header { padding: 15px; display: flex; justify-content: space-between; align-items: center; background: #151515; }
+  
+  .btn-inj { background: #27ae60; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+  
   .tabs { display: flex; background: #080808; border-bottom: 1px solid #1a1a1a; }
-  .tabs button { flex: 1; padding: 10px; background: none; border: none; color: #444; font-weight: bold; font-size: 0.7rem; cursor: pointer; }
+  .tabs button { flex: 1; padding: 12px; background: none; border: none; color: #555; cursor: pointer; font-weight: bold; }
   .tabs button.active { color: #f1c40f; background: #111; border-bottom: 2px solid #f1c40f; }
-  .card-body { padding: 12px; }
-  .row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.8rem; }
-  .green { color: #2ecc71; }
-  .slider { margin-bottom: 12px; }
-  .slider label { font-size: 0.7rem; color: #888; display: block; margin-bottom: 5px; }
-  input[type=range] { width: 100%; accent-color: #f1c40f; }
-  .btn { width: 100%; padding: 8px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 5px; font-size: 0.75rem; }
-  .gold { background: #f1c40f; color: #000; }
-  .gray { background: #222; color: #fff; }
-  .console { position: fixed; bottom: 0; width: 100%; padding: 6px; background: #000; color: #2ecc71; font-family: monospace; font-size: 0.7rem; border-top: 1px solid #222; }
+
+  .body { padding: 15px; }
+  .row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #111; }
+  
+  .prime-control { display: flex; gap: 10px; }
+  .prime-control input { background: #222; border: 1px solid #333; color: white; width: 80px; padding: 3px; }
+  .prime-control button { background: #f1c40f; border: none; padding: 3px 10px; font-weight: bold; cursor: pointer; }
+
+  .console { position: fixed; bottom: 0; width: 100%; padding: 10px; background: #000; color: #2ecc71; border-top: 1px solid #222; font-family: monospace; font-size: 0.8rem; }
 </style>
