@@ -1,202 +1,156 @@
 <script>
-  // --- ÉCONOMIE DE L'EMPIRE ---
+  // Variables Globales
   let geo = 39259;
-  let tpCards = 10;      // Pack Prestige (100)
-  let crowns = 0;        // Pack Crowns (10) à 4.99€
-  let gTokens = 5000;    // Pack G-Token (10 000) ou Prestige (5 000)
-  let jumps = 0;         // Pack Téléportation (3) à 5.99€
-  let isElite = false;   // Pack Élite à 9.99€
+  let tpCards = 10;
+  let crowns = 0;
+  let gTokens = 5000;
+  let jumps = 0;
+  let isElite = false;
   
   let activeTab = 'RAID';
-  let logs = ["Prêt pour l'expansion. En attente d'ordres..."];
+  let logs = ["Prêt pour l'expansion."];
 
-  // --- LOGIQUE BRAQUAGE ---
-  let target = { 
-    name: "BANQUE CENTRALE Z-01", 
-    loot: 42500, 
-    img: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1000" 
-  };
-  
-  let locks = Array.from({length: 3}, (_, i) => ({ id: i, solved: false, isCorrect: false }));
+  // Logique du Raid
+  let target = { name: "BANQUE CENTRALE", loot: 42500, img: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1000" };
+  let locks = [{id:0, s:false, ok:false}, {id:1, s:false, ok:false}, {id:2, s:false, ok:false}];
   let heistStarted = false;
   let winReady = false;
 
   function startInfiltration() {
     if (tpCards >= 1) {
-      tpCards -= 1;
-      heistStarted = true; winReady = false;
-      let indices = [0, 1, 2].sort(() => Math.random() - 0.5);
-      let correctIndices = indices.slice(0, 2);
-      locks = locks.map((l, i) => ({ ...l, solved: false, isCorrect: correctIndices.includes(i) }));
-      logs = ["🔓 Infiltration réussie. Trouvez les 2 points faibles.", ...logs];
-    } else {
-      logs = ["⚠️ Tickets insuffisants ! Passez au Shop.", ...logs];
+      tpCards--; heistStarted = true; winReady = false;
+      let rand = [0,1,2].sort(() => Math.random() - 0.5);
+      locks = locks.map((l, i) => ({ ...l, s: false, ok: rand.slice(0,2).includes(i) }));
+      logs = ["🔓 Infiltration réussie. Trouvez les 2 verrous.", ...logs];
     }
   }
 
-  function tryLock(index) {
-    if (!heistStarted || locks[index].solved || winReady) return;
-    if (locks[index].isCorrect) {
-      locks[index].solved = true;
-      locks = [...locks];
-      if (locks.filter(l => l.solved).length >= 2) {
-        winReady = true;
-        logs = ["💰 SÉCURITÉ MISE HORS SERVICE ! RÉCUPÉREZ LE BUTIN.", ...logs];
-      }
-    } else {
-      logs = ["❌ Ce verrou résiste. Tentez un autre.", ...logs];
-    }
+  function tryLock(i) {
+    if (!heistStarted || locks[i].s || winReady) return;
+    if (locks[i].ok) {
+      locks[i].s = true; locks = [...locks];
+      if (locks.filter(l => l.s).length >= 2) { winReady = true; logs = ["💰 ACCÈS TOTAL !", ...logs]; }
+    } else { logs = ["❌ Verrou renforcé.", ...logs]; }
   }
 
-  function collectMoney() {
-    geo += target.loot;
-    heistStarted = false; winReady = false;
-    logs = [`💎 +${target.loot.toLocaleString()} G ! Transfert réussi.`, ...logs];
-  }
-
-  // --- BOUTIQUE RÉELLE ---
-  function buyPack(name, type, qty, price) {
+  function buy(name, type, qty) {
     if (type === 'TICKET') tpCards += qty;
     if (type === 'CROWN') crowns += qty;
     if (type === 'GTOKEN') gTokens += qty;
     if (type === 'JUMP') jumps += qty;
     if (type === 'ELITE') isElite = true;
-    logs = [`🛒 Pack ${name} activé (${price}€) !`, ...logs];
+    logs = [`🛒 Pack ${name} activé !`, ...logs];
   }
 </script>
 
 <main>
   <header>
     <div class="logo">👑 GEO EMPIRE {isElite ? '★ ELITE' : ''}</div>
-    <div class="stats-bar">
-      <div class="stat" title="GEO">🟡 {geo.toLocaleString()}</div>
-      <div class="stat" title="Tickets">🎫 {tpCards}</div>
-      <div class="stat" title="Crowns">👑 {crowns}</div>
-      <div class="stat" title="G-Tokens">🧱 {gTokens.toLocaleString()}</div>
+    <div class="stats">
+      <span>🟡 {geo.toLocaleString()}</span>
+      <span>🎫 {tpCards}</span>
+      <span>👑 {crowns}</span>
+      <span>🧱 {gTokens}</span>
     </div>
   </header>
 
-  <nav class="top-nav">
+  <nav>
     <button class:atv={activeTab==='MAP'} on:click={()=>activeTab='MAP'}>📍 RADAR</button>
     <button class:atv={activeTab==='SHOP'} on:click={()=>activeTab='SHOP'}>🛒 SHOP</button>
     <button class:atv={activeTab==='RAID'} on:click={()=>activeTab='RAID'}>🏴‍☠️ RAID</button>
   </nav>
 
-  <div class="content">
+  <div class="container">
     {#if activeTab === 'MAP'}
-      <div class="radar-container">
-        <div class="radar-visual">
-          <div class="scanner-line"></div>
-          <div class="target-blip" style="top:40%; left:55%"></div>
-        </div>
-        <p class="radar-text">RECHERCHE DE CIBLES À PROXIMITÉ...</p>
+      <div class="radar-box">
+        <div class="radar-circle"><div class="line"></div></div>
+        <p>RECHERCHE GPS...</p>
         {#if jumps > 0}
-          <button class="jump-action" on:click={() => {jumps--; logs=["🌀 Saut GPS vers nouvelle zone.", ...logs]}}>
-            🌀 UTILISER UN SAUT ({jumps} restants)
-          </button>
+          <button class="j-btn" on:click={()=>{jumps--; logs=["🌀 Saut effectué", ...logs]}}>SAUTER (RESTE: {jumps})</button>
         {/if}
       </div>
 
     {:else if activeTab === 'SHOP'}
-      <div class="shop-content">
-        <h3 class="section-title">💎 BOUTIQUE PRIVÉE (ARGENT RÉEL)</h3>
-        
-        <div class="card elite-card" on:click={() => buyPack('ÉLITE', 'ELITE', 1, 9.99)}>
-          <div class="icon">📂</div>
-          <div class="info"><b>PACK ÉLITE</b><small>Tout louer/vendre + Export Excel</small></div>
-          <div class="price">9.99 €</div>
+      <div class="shop">
+        <h3 class="title">💎 BOUTIQUE (RÉEL)</h3>
+        <div class="item elite" on:click={()=>buy('ELITE','ELITE',1)}>
+          <span>📂 PACK ÉLITE</span> <b>9.99 €</b>
         </div>
-
-        <div class="card prestige-card" on:click={() => buyPack('PRESTIGE', 'TICKET', 100, 7.99)}>
-          <div class="icon">📦</div>
-          <div class="info"><b>PACK PRESTIGE</b><small>100 Tickets + 5 000 G-Tokens</small></div>
-          <div class="price">7.99 €</div>
+        <div class="item prestige" on:click={()=>buy('PRESTIGE','TICKET',100)}>
+          <span>📦 PRESTIGE (100🎫)</span> <b>7.99 €</b>
         </div>
-
-        <div class="card teleport-card" on:click={() => buyPack('TÉLÉPORT', 'JUMP', 3, 5.99)}>
-          <div class="icon">🌀</div>
-          <div class="info"><b>TÉLÉPORTATION</b><small>3 Sauts instantanés (5km)</small></div>
-          <div class="price">5.99 €</div>
+        <div class="item teleport" on:click={()=>buy('TELE','JUMP',3)}>
+          <span>🌀 TÉLÉPORT (3 sauts)</span> <b>5.99 €</b>
         </div>
-
-        <div class="card crown-card" on:click={() => buyPack('CROWNS', 'CROWN', 10, 4.99)}>
-          <div class="icon">👑</div>
-          <div class="info"><b>PACK CROWNS</b><small>10 Jetons Loterie Royale</small></div>
-          <div class="price">4.99 €</div>
+        <div class="item crown" on:click={()=>buy('CROWNS','CROWN',10)}>
+          <span>👑 CROWNS (10 jetons)</span> <b>4.99 €</b>
         </div>
-
-        <div class="card gtoken-card" on:click={() => buyPack('G-TOKEN', 'GTOKEN', 10000, 4.99)}>
-          <div class="icon">🧱</div>
-          <div class="info"><b>PACK G-TOKENS</b><small>10 000 Lingots de boost</small></div>
-          <div class="price">4.99 €</div>
+        <div class="item gtoken" on:click={()=>buy('G-TOKEN','GTOKEN',10000)}>
+          <span>🧱 G-TOKENS (10k)</span> <b>4.99 €</b>
         </div>
       </div>
 
     {:else if activeTab === 'RAID'}
-      <div class="raid-view">
-        <div class="target-banner">
-          <img src={target.img} alt="target" />
-          <div class="target-overlay">
-            <h2>{target.name}</h2>
-            <div class="loot-display">{target.loot.toLocaleString()} G</div>
-          </div>
+      <div class="raid">
+        <div class="banner">
+          <img src={target.img} alt="" />
+          <div class="info"><h2>{target.name}</h2><div class="tag">{target.loot} G</div></div>
         </div>
-
-        <div class="locks-container">
-          {#each locks as lock, i}
-            <button class="lock-box" class:is-open={lock.solved} on:click={() => tryLock(i)}>
-              <span class="lock-ico">{lock.solved ? '🔓' : '🔒'}</span>
-              <span class="lock-label">{lock.solved ? 'OUVERT' : 'TESTER'}</span>
+        <div class="locks">
+          {#each locks as l, i}
+            <button class="l-card" class:op={l.s} on:click={()=>tryLock(i)}>
+              {l.s ? '🔓' : '🔒'} <small>{l.s ? 'OK' : 'TEST'}</small>
             </button>
           {/each}
         </div>
-
-        <div class="raid-footer">
-          {#if !heistStarted}
-            <button class="raid-btn start" on:click={startInfiltration}>LANCER LE RAID (1 🎫)</button>
-          {:else if winReady}
-            <button class="raid-btn collect" on:click={collectMoney}>💰 RÉCUPÉRER BUTIN</button>
-          {:else}
-            <div class="hack-status">TENTATIVE DE DÉVERROUILLAGE...</div>
-          {/if}
+        <div class="foot">
+          {#if !heistStarted} <button class="b r" on:click={startInfiltration}>LANCER (1 🎫)</button>
+          {:else if winReady} <button class="b g" on:click={()=>{geo+=target.loot; heistStarted=false; winReady=false;}}>💰 RÉCUPÉRER</button>
+          {:else} <div class="txt">PIRATAGE...</div> {/if}
         </div>
       </div>
     {/if}
   </div>
-
-  <div class="bottom-logs">> {logs[0]}</div>
+  <div class="log">> {logs[0]}</div>
 </main>
 
 <style>
-  :global(body) { margin:0; background:#000; color:#fff; font-family: 'Helvetica', sans-serif; overflow:hidden; }
+  :global(body) { margin:0; background:#000; color:#fff; font-family:sans-serif; }
+  header { padding:15px; border-bottom:1px solid #222; }
+  .logo { color:#f1c40f; font-weight:bold; margin-bottom:5px; }
+  .stats { font-size:0.75rem; display:flex; gap:10px; color:#aaa; }
+  nav { display:flex; border-bottom:2px solid #f1c40f; }
+  nav button { flex:1; padding:15px; background:none; border:none; color:#555; font-weight:bold; font-size:0.7rem; }
+  nav button.atv { color:#f1c40f; background:rgba(241,196,15,0.1); }
+  .container { height:calc(100vh - 120px); overflow-y:auto; }
   
-  header { padding: 12px 15px; border-bottom: 1px solid #222; background: #050505; }
-  .logo { color: #f1c40f; font-weight: 900; font-size: 1.1rem; letter-spacing: 1px; }
-  .stats-bar { display: flex; gap: 10px; margin-top: 5px; font-size: 0.75rem; color: #aaa; }
-  .stat { background: #111; padding: 3px 8px; border-radius: 4px; border: 1px solid #222; }
+  /* SHOP */
+  .shop { padding:15px; }
+  .title { color:#f1c40f; font-size:0.8rem; letter-spacing:1px; }
+  .item { display:flex; justify-content:space-between; background:#111; padding:15px; border-radius:10px; margin-bottom:10px; border:1px solid #333; align-items:center; }
+  .item b { background:#f1c40f; color:#000; padding:5px 10px; border-radius:5px; font-size:0.75rem; }
+  .elite { border-color:#fff; } .prestige { border-color:#00d4ff; } .teleport { border-color:#9b59b6; } .crown { border-color:#f1c40f; } .gtoken { border-color:#e67e22; }
 
-  .top-nav { display: flex; border-bottom: 2px solid #f1c40f; }
-  .top-nav button { flex: 1; padding: 14px; background: none; border: none; color: #555; font-weight: bold; font-size: 0.7rem; }
-  .top-nav button.atv { color: #f1c40f; background: rgba(241, 196, 15, 0.1); }
+  /* RAID */
+  .banner { position:relative; height:140px; }
+  .banner img { width:100%; height:100%; object-fit:cover; opacity:0.3; }
+  .info { position:absolute; bottom:10px; left:15px; }
+  .tag { background:#e74c3c; padding:3px 8px; border-radius:4px; font-weight:bold; }
+  .locks { display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; padding:20px; }
+  .l-card { background:#111; border:2px solid #333; border-radius:10px; padding:20px 0; color:#fff; font-size:1.5rem; }
+  .l-card.op { border-color:#2ecc71; color:#2ecc71; }
+  .l-card small { display:block; font-size:0.6rem; }
+  .foot { padding:0 20px; }
+  .b { width:100%; padding:15px; border-radius:10px; border:none; color:#fff; font-weight:bold; }
+  .r { background:#e74c3c; } .g { background:#2ecc71; }
+  .txt { text-align:center; color:#e74c3c; font-weight:bold; }
 
-  .content { height: calc(100vh - 120px); overflow-y: auto; }
-
-  /* STYLE SHOP */
-  .shop-content { padding: 15px; }
-  .section-title { font-size: 0.75rem; color: #f1c40f; letter-spacing: 2px; margin-bottom: 15px; border-left: 3px solid #f1c40f; padding-left: 8px; }
-  .card { display: flex; align-items: center; background: #0a0a0a; padding: 12px; border-radius: 12px; margin-bottom: 10px; border: 1px solid #222; transition: 0.2s; }
-  .card:active { transform: scale(0.98); background: #151515; }
-  .icon { font-size: 2.2rem; margin-right: 15px; }
-  .info { flex: 1; }
-  .info b { display: block; font-size: 0.85rem; margin-bottom: 2px; }
-  .info small { color: #666; font-size: 0.6rem; }
-  .price { background: #f1c40f; color: #000; padding: 6px 10px; border-radius: 6px; font-weight: 900; font-size: 0.75rem; }
+  /* RADAR */
+  .radar-box { display:flex; flex-direction:column; align-items:center; padding:40px; }
+  .radar-circle { width:150px; height:150px; border:2px solid #f1c40f; border-radius:50%; position:relative; overflow:hidden; }
+  .line { position:absolute; width:50%; height:2px; background:#f1c40f; top:50%; left:50%; transform-origin:left; animation: r 4s linear infinite; }
+  @keyframes r { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  .j-btn { margin-top:20px; background:#9b59b6; border:none; color:#fff; padding:10px 20px; border-radius:20px; }
   
-  .elite-card { border-color: #fff; box-shadow: 0 0 10px rgba(255,255,255,0.1); }
-  .prestige-card { border-color: #00d4ff; }
-  .crown-card { border-color: #f1c40f; }
-  .gtoken-card { border-color: #e67e22; }
-  .teleport-card { border-color: #9b59b6; }
-
-  /* STYLE RAID */
-  .target-banner { position: relative; height
+  .log { position:fixed; bottom:0; width:100%; background:#000; padding:10px; color:#2ecc71; font-family:monospace; font-size:0.6rem; }
+</style>
