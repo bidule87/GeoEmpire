@@ -1,46 +1,47 @@
 <script>
   import { onMount } from 'svelte';
 
-  let capitalHolding = 100000; 
-  let logs = "GEO EMPIRE : Systèmes fiscaux synchronisés.";
-
-  // CONFIGURATION MAIRIE (Modifiable par l'équipe du maire)
-  let taxeMunicipaleFixe = 500; // Retiré chaque minuit par entité
-  let tauxImpotBenefice = 0.25; // 25% chaque dimanche sur le profit hebdomadaire
-
-  // DONNÉES DE JEU
+  let capitalHolding = 6157.92;
+  let logs = "GEO EMPIRE : Prêt pour expansion.";
   let beneficeSemaineAccumule = 0;
-  
+
+  // PARAMÈTRES FISCAUX (Mairie)
+  let taxeMunicipaleFixe = 500; 
+  let tauxImpotBenefice = 0.20;
+
+  // NOTRE EMPIRE
   let filiales = [
-    { id: 1, nom: "Acier 1", type: "Entreprise", gainJour: 8500 },
-    { id: 2, nom: "Alpha Holding", type: "Holding", gainJour: 15000 }
+    { id: 1, nom: "Acier 1", type: "Entreprise", gainJour: 8500 }
   ];
 
-  // LOGIQUE DE MINUIT (TOUS LES JOURS)
-  function cycleMinuitQuotidien() {
-    let nbEntites = filiales.length + 1; // Filiales + la Holding principale
-    let totalTaxeMairie = nbEntites * taxeMunicipaleFixe;
-    
-    capitalHolding -= totalTaxeMairie;
-    logs = `🏛️ MINUIT : La mairie a prélevé ${totalTaxeMairie}$ (${nbEntites} entités).`;
+  // CATALOGUE D'ACHAT
+  const catalogue = [
+    { type: "Entreprise", nom: "PME Locale", prix: 15000, gain: 2500 },
+    { type: "Entreprise", nom: "Usine Textile", prix: 50000, gain: 12000 },
+    { type: "Holding", nom: "Fond d'Investissement", prix: 150000, gain: 45000 }
+  ];
+
+  function acheter(item) {
+    if (capitalHolding >= item.prix) {
+      capitalHolding -= item.prix;
+      const newId = filiales.length + 1;
+      filiales = [...filiales, { 
+        id: newId, 
+        nom: `${item.nom} #${newId}`, 
+        type: item.type, 
+        gainJour: item.gain 
+      }];
+      logs = `Achat réussi : ${item.nom} intégrée à l'empire.`;
+    } else {
+      logs = "ERREUR : Fonds insuffisants pour cet achat !";
+    }
   }
 
-  // LOGIQUE DU DIMANCHE (HEBDOMADAIRE)
-  function cycleDimancheMinuit() {
-    let impotIS = beneficeSemaineAccumule * tauxImpotBenefice;
-    capitalHolding -= impotIS;
-    
-    logs = `⚖️ DIMANCHE : Impôt sur les bénéfices prélevé : -${impotIS.toLocaleString()}$`;
-    beneficeSemaineAccumule = 0; // Reset pour la semaine suivante
-  }
-
-  // SIMULATION DU FLUX DE TRÉSORERIE
+  // LOGIQUE DE FLUX (Tick chaque seconde)
   onMount(() => {
     const interval = setInterval(() => {
-      // Gain par seconde basé sur les revenus journaliers
       let gainTotalJour = filiales.reduce((acc, f) => acc + f.gainJour, 0);
       let gainTick = gainTotalJour / 3600; 
-
       capitalHolding += gainTick;
       beneficeSemaineAccumule += gainTick;
     }, 1000);
@@ -50,49 +51,42 @@
 
 <main style="background: #000; color: #eee; min-height: 100vh; font-family: sans-serif;">
   
-  <header style="background: #111; padding: 20px; border-bottom: 3px solid #f1c40f; display: flex; justify-content: space-between;">
+  <header style="background: #111; padding: 20px; border-bottom: 3px solid #2ecc71; display: flex; justify-content: space-between; align-items: center;">
     <div>
-      <h1 style="margin:0; font-size: 0.8rem; color: #555;">ÉTAT FINANCIER EMPIRE</h1>
-      <div style="font-size: 1.6rem; font-weight: bold; color: #f1c40f;">
-        {capitalHolding.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} $
-      </div>
+      <h1 style="margin:0; font-size: 0.8rem; color: #555; text-transform: uppercase;">Expansion Empire</h1>
+      <div style="font-size: 1.6rem; font-weight: bold; color: #2ecc71;">{capitalHolding.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} $</div>
     </div>
     <div style="text-align: right;">
-      <span style="font-size: 0.6rem; color: #666; display: block;">BÉNÉFICE SEMAINE</span>
-      <b style="color: #2ecc71;">+ {beneficeSemaineAccumule.toLocaleString(undefined, {maximumFractionDigits: 0})} $</b>
+      <span style="display: block; font-size: 0.6rem; color: #666;">COÛT MAIRIE / JOUR</span>
+      <b style="color: #e74c3c;">-{(filiales.length * taxeMunicipaleFixe).toLocaleString()} $</b>
     </div>
   </header>
 
   <div style="padding: 15px;">
     
-    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-      <div style="flex: 1; background: #0a0a0a; border: 1px solid #222; padding: 15px; border-radius: 8px;">
-        <p style="font-size: 0.7rem; color: #555; margin: 0;">TAXE MAIRIE (JOUR)</p>
-        <b style="color: #e74c3c;">-{taxeMunicipaleFixe} $ / entité</b>
-      </div>
-      <div style="flex: 1; background: #0a0a0a; border: 1px solid #222; padding: 15px; border-radius: 8px;">
-        <p style="font-size: 0.7rem; color: #555; margin: 0;">IMPÔT BÉNÉFICE (DIM)</p>
-        <b style="color: #f1c40f;">{tauxImpotBenefice * 100} %</b>
-      </div>
+    <h2 style="font-size: 0.8rem; color: #555; margin-bottom: 10px; text-transform: uppercase;">Catalogue d'Acquisition</h2>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 30px;">
+      {#each catalogue as item}
+        <button 
+          on:click={() => acheter(item)}
+          style="background: #0a0a0a; border: 1px solid #333; padding: 15px; border-radius: 8px; text-align: left; cursor: pointer; transition: 0.2s;"
+        >
+          <b style="color: #fff; display: block; font-size: 0.9rem;">{item.nom}</b>
+          <span style="color: #2ecc71; font-size: 0.8rem; display: block;">+{item.gain}$ / jour</span>
+          <span style="color: #f1c40f; font-size: 0.8rem; font-weight: bold; display: block; margin-top: 10px;">Prix: {item.prix.toLocaleString()} $</span>
+        </button>
+      {/each}
     </div>
 
-    <div style="background: #111; padding: 15px; border-radius: 8px; border: 1px solid #333; margin-bottom: 20px;">
-      <p style="font-size: 0.7rem; color: #888; text-align: center; margin-bottom: 10px;">ACTIONS MAIRIE (TEST)</p>
-      <div style="display: flex; gap: 10px;">
-        <button on:click={cycleMinuitQuotidien} style="flex: 1; padding: 10px; background: #222; color: #eee; border: 1px solid #444; cursor: pointer; font-size: 0.7rem;">SIMULER MINUIT</button>
-        <button on:click={cycleDimancheMinuit} style="flex: 1; padding: 10px; background: #e74c3c; color: #fff; border: none; font-weight: bold; cursor: pointer; font-size: 0.7rem;">SIMULER DIMANCHE</button>
-      </div>
-    </div>
-
+    <h2 style="font-size: 0.8rem; color: #555; margin-bottom: 10px; text-transform: uppercase;">Vos Filiales ({filiales.length})</h2>
     {#each filiales as f}
       <div style="background: #0a0a0a; border: 1px solid #222; padding: 15px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
         <div>
-          <b style="color: #fff; display: block;">{f.nom}</b>
-          <small style="color: #444;">{f.type}</small>
+          <b style="color: #eee;">{f.nom}</b>
+          <div style="font-size: 0.6rem; color: #444; text-transform: uppercase; margin-top: 2px;">{f.type}</div>
         </div>
         <div style="text-align: right;">
-          <span style="color: #2ecc71; font-size: 0.8rem;">+{f.gainJour} $ / jour</span>
-          <span style="display: block; color: #e74c3c; font-size: 0.7rem;">Taxe Mairie: -{taxeMunicipaleFixe} $</span>
+          <span style="color: #2ecc71; font-weight: bold;">+{f.gainJour} $</span>
         </div>
       </div>
     {/each}
