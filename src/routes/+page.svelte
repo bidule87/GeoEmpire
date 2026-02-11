@@ -1,95 +1,134 @@
 <script>
-  let capitalHolding = 15000000000; // 15 Milliards pour tester
-  let isPrestige = false; // Toggle pour tester les deux modes
-  let logs = "GEO EMPIRE : Système de compte Standard actif.";
-  let categorieActuelle = "Bureaux";
+  import { onMount } from 'svelte';
 
-  // Simulation du timer de refresh (toutes les heures)
-  let tempsRestant = "59:54"; 
+  // --- ÉTAT GLOBAL ---
+  let capitalHolding = 150000;
+  let isPrestige = false;
+  let logs = "GEO EMPIRE : Prêt pour expansion infinie.";
+  let tabPrincipal = "Acheter"; // Onglets : Propriétés, Acheter, Travaux, etc.
+  let catImmo = "Bureaux"; // Catégories : Bureaux, Commerciaux, Industriels...
 
-  // Générateur de bien
+  // --- CONFIGURATION ---
+  const categories = ["Bureaux", "Commerciaux", "Industriels", "Terrain", "Transport", "Zones", "Espace"];
+  
+  // Générateur de biens (Infini)
   function genererBien(cat) {
-    const p = (Math.floor(Math.random() * 50) + 1) * 100000;
-    return { id: Math.random(), n: `${cat} Type ${Math.floor(Math.random()*99)}`, p, l: p*0.03, c: p*0.005, i: p*0.002 };
+    const p = (Math.floor(Math.random() * 50) + 5) * 50000;
+    return {
+      id: Math.random().toString(36).substr(2, 9),
+      nom: `${cat} ${Math.floor(Math.random() * 999)}`,
+      prix: p,
+      loyer: Math.floor(p * 0.033),
+      charges: Math.floor(p * 0.006),
+      impots: Math.floor(p * 0.002),
+      vendu: false
+    };
   }
 
-  // Catalogue limité pour Standard
-  let catalogueStandard = Array.from({length: 3}, () => genererBien("Bureaux"));
+  // Catalogue initial
+  let catalogue = Array.from({length: 5}, () => genererBien(catImmo));
 
-  function acheterStandard(bien, index) {
-    if (capitalHolding >= bien.p) {
-      capitalHolding -= bien.p;
-      // En standard, le slot devient "VENDU" jusqu'au prochain refresh
-      catalogueStandard[index] = { ...bien, vendu: true };
-      logs = `Achat effectué. Slot épuisé jusqu'au refresh.`;
+  function changerCategorie(nouvelleCat) {
+    catImmo = nouvelleCat;
+    catalogue = Array.from({length: isPrestige ? 10 : 3}, () => genererBien(catImmo));
+  }
+
+  function acquerir(bien, index) {
+    if (capitalHolding >= bien.prix) {
+      capitalHolding -= bien.prix;
+      if (isPrestige) {
+        catalogue[index] = genererBien(catImmo); // Remplacement instantané
+      } else {
+        catalogue[index].vendu = true; // Bloqué jusqu'au refresh en Standard
+      }
+      logs = `Acquisition : ${bien.nom} confirmée.`;
+    } else {
+      logs = "Fonds insuffisants !";
     }
   }
 
-  function achatMassePrestige() {
-    if (!isPrestige) return;
-    let montant = 5000000000; // 5 Milliards
-    if (capitalHolding >= montant) {
-      capitalHolding -= montant;
-      logs = `🔥 PRESTIGE : 5 milliards d'actifs acquis instantanément !`;
+  function achatMasse() {
+    if (capitalHolding >= 5000000000) {
+      capitalHolding -= 5000000000;
+      logs = "Prestige : 5 Milliards investis dans le parc immobilier.";
     }
   }
 </script>
 
 <main style="background: #000; color: #eee; min-height: 100vh; font-family: sans-serif;">
   
-  <header style="background: #111; padding: 20px; border-bottom: 3px solid {isPrestige ? '#f1c40f' : '#3498db'}; display: flex; justify-content: space-between; align-items: center;">
+  <header style="background: #fff; color: #000; padding: 15px; display: flex; justify-content: space-between; align-items: center;">
     <div>
-      <div style="font-size: 0.6rem; color: #555;">CAPITAL HOLDING</div>
-      <div style="font-size: 1.5rem; font-weight: bold; color: {isPrestige ? '#f1c40f' : '#3498db'};">
-        {capitalHolding.toLocaleString()} $
+      <h2 style="margin:0; font-size: 0.8rem; color: #666;">TRÉSORERIE HOLDING</h2>
+      <div style="font-size: 1.4rem; font-weight: bold;">
+        {capitalHolding.toLocaleString()} <small>N ∅</small>
       </div>
     </div>
-    <div style="text-align: right;">
-      <button on:click={() => isPrestige = !isPrestige} style="background: {isPrestige ? '#f1c40f' : '#222'}; color: #000; border: none; padding: 5px 10px; border-radius: 4px; font-weight: bold; font-size: 0.7rem; cursor: pointer;">
-        {isPrestige ? 'MODE PRESTIGE' : 'PASSER PRESTIGE'}
-      </button>
-    </div>
+    <button on:click={() => isPrestige = !isPrestige} style="background: {isPrestige ? '#f1c40f' : '#eee'}; border: 1px solid #ccc; padding: 8px 15px; font-weight: bold; cursor: pointer;">
+      {isPrestige ? '⭐ PRESTIGE' : 'COMPTE STANDARD'}
+    </button>
   </header>
 
-  <div style="padding: 15px;">
-    
-    {#if !isPrestige}
-      <div style="background: #1a1a1a; padding: 10px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #333; margin-bottom: 20px;">
-        <span style="font-size: 0.7rem; color: #888;">PROCHAIN ARRIVAGE DANS : <b style="color: #3498db;">{tempsRestant}</b></span>
-        <span style="font-size: 0.6rem; color: #444;">(LIMITE : 3 BIENS / HEURE)</span>
-      </div>
-    {:else}
-      <div style="background: #1a1500; padding: 20px; border-radius: 4px; border: 1px solid #f1c40f; margin-bottom: 20px; text-align: center;">
-        <p style="color: #f1c40f; font-weight: bold; margin-bottom: 10px;">ACHAT INDUSTRIEL ILLIMITÉ</p>
-        <button on:click={achatMassePrestige} style="background: #f1c40f; color: #000; border: none; padding: 12px 20px; font-weight: bold; border-radius: 4px; cursor: pointer; width: 100%;">
-          INVESTIR 5 000 000 000 $ D'UN COUP
-        </button>
-      </div>
-    {/if}
-
-    <table style="width: 100%; border-collapse: collapse; font-size: 0.75rem;">
-      <tr style="color: #444; text-align: left; border-bottom: 1px solid #222;">
-        <th style="padding: 10px;">DESIGNATION</th>
-        <th>PRIX</th>
-        <th>ACTION</th>
-      </tr>
-      {#each catalogueStandard as bien, i}
-        <tr style="border-bottom: 1px solid #111; opacity: {bien.vendu ? 0.3 : 1};">
-          <td style="padding: 15px; font-weight: bold;">{bien.n}</td>
-          <td style="color: #2ecc71;">{bien.p.toLocaleString()} $</td>
-          <td>
-            {#if bien.vendu}
-              <span style="color: #e74c3c;">VENDU</span>
-            {:else}
-              <button on:click={() => acheterStandard(bien, i)} style="background: #333; color: #fff; border: 1px solid #444; padding: 5px 10px; cursor: pointer;">ACHETER</button>
-            {/if}
-          </td>
-        </tr>
-      {/each}
-    </table>
+  <div style="background: #f8f9fa; display: flex; justify-content: center; gap: 5px; padding: 10px; border-bottom: 1px solid #ddd;">
+    {#each ['Propriétés', 'Acheter', 'Travaux', 'Assurance', 'Info'] as t}
+      <button on:click={() => tabPrincipal = t} style="background: #fff; border: 1px solid #ddd; padding: 10px 15px; cursor: pointer; display: flex; flex-direction: column; align-items: center; min-width: 80px; {tabPrincipal === t ? 'border-bottom: 3px solid #000;' : ''}">
+        <span style="font-size: 0.7rem; font-weight: bold; color: #333;">{t}</span>
+      </button>
+    {/each}
   </div>
 
-  <footer style="position: fixed; bottom: 0; width: 100%; background: #000; color: #2ecc71; padding: 10px; font-family: monospace; font-size: 0.7rem; border-top: 1px solid #222;">
+  <div style="padding: 20px;">
+    {#if tabPrincipal === 'Acheter'}
+      <div style="background: #fff; color: #333; border-radius: 4px; border: 1px solid #ddd; overflow: hidden;">
+        
+        <div style="padding: 15px; background: #f1f1f1; display: flex; justify-content: space-between; align-items: center;">
+          <select bind:value={catImmo} on:change={() => changerCategorie(catImmo)} style="padding: 8px; width: 200px;">
+            {#each categories as c}
+              <option value={c}>{c}</option>
+            {/each}
+          </select>
+          {#if isPrestige}
+            <button on:click={achatMasse} style="background: #f1c40f; border: none; padding: 8px 15px; font-weight: bold; cursor: pointer;">ACHAT MASSE (5 Mrd)</button>
+          {/if}
+        </div>
+
+        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem;">
+          <thead>
+            <tr style="background: #fff; border-bottom: 1px solid #eee; color: #888;">
+              <th style="padding: 12px;">Type</th>
+              <th>Prix</th>
+              <th>Loyer</th>
+              <th>Charges</th>
+              <th>Impôts</th>
+              <th style="text-align: center;">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {#each catalogue as bien, i}
+              <tr style="border-bottom: 1px solid #f9f9f9; opacity: {bien.vendu ? 0.4 : 1}">
+                <td style="padding: 12px; color: #3498db; font-weight: bold;">{bien.nom}</td>
+                <td>{bien.prix.toLocaleString()} ∅</td>
+                <td>{bien.loyer.toLocaleString()} ∅</td>
+                <td>{bien.charges.toLocaleString()} ∅</td>
+                <td>{bien.impots.toLocaleString()} ∅</td>
+                <td style="text-align: center; padding: 8px;">
+                  {#if bien.vendu}
+                    <span style="color: #e74c3c; font-weight: bold;">VENDU</span>
+                  {:else}
+                    <button on:click={() => acquerir(bien, i)} style="background: #3498db; color: #fff; border: none; padding: 6px 12px; border-radius: 2px; cursor: pointer; font-weight: bold;">Acheter</button>
+                  {/if}
+                </td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
+    {:else}
+      <div style="text-align: center; padding: 50px; color: #666;">Onglet {tabPrincipal} en cours de développement...</div>
+    {/if}
+  </div>
+
+  <footer style="position: fixed; bottom: 0; width: 100%; background: #000; color: #2ecc71; padding: 10px; font-family: monospace; font-size: 0.7rem; border-top: 1px solid #333;">
     > {logs}
   </footer>
 </main>
