@@ -1,40 +1,48 @@
 <script>
   import { onMount } from 'svelte';
 
-  let capitalHolding = 6157.92;
-  let logs = "GEO EMPIRE : En attente d'investissement marketing...";
-  
-  // Variables de la filiale
-  let tresoFiliale = 12500;
-  let gainJournalierEstime = 8500; // Ce que la filiale rapporte avant marketing
-  
-  // LE JOUEUR DOIT ENTRER CE CHIFFRE
-  let investissementMkt = 0; 
-  let boostMarketing = 1.0; // Le multiplicateur final
+  let capitalHolding = 100000; 
+  let logs = "GEO EMPIRE : Systèmes fiscaux synchronisés.";
 
-  // LOGIQUE CACHÉE (Calcul du boost selon tes règles 10% - 20%)
-  $: {
-    let ratio = investissementMkt / gainJournalierEstime;
+  // CONFIGURATION MAIRIE (Modifiable par l'équipe du maire)
+  let taxeMunicipaleFixe = 500; // Retiré chaque minuit par entité
+  let tauxImpotBenefice = 0.25; // 25% chaque dimanche sur le profit hebdomadaire
+
+  // DONNÉES DE JEU
+  let beneficeSemaineAccumule = 0;
+  
+  let filiales = [
+    { id: 1, nom: "Acier 1", type: "Entreprise", gainJour: 8500 },
+    { id: 2, nom: "Alpha Holding", type: "Holding", gainJour: 15000 }
+  ];
+
+  // LOGIQUE DE MINUIT (TOUS LES JOURS)
+  function cycleMinuitQuotidien() {
+    let nbEntites = filiales.length + 1; // Filiales + la Holding principale
+    let totalTaxeMairie = nbEntites * taxeMunicipaleFixe;
     
-    if (ratio <= 0) {
-      boostMarketing = 1.0;
-    } else if (ratio < 0.10) {
-      boostMarketing = 1.05; // Faible impact
-    } else if (ratio >= 0.10 && ratio <= 0.20) {
-      boostMarketing = 1.25; // Impact Optimal (Le joueur a trouvé le bon réglage)
-    } else {
-      boostMarketing = 1.50; // Gros impact mais coûte cher
-    }
+    capitalHolding -= totalTaxeMairie;
+    logs = `🏛️ MINUIT : La mairie a prélevé ${totalTaxeMairie}$ (${nbEntites} entités).`;
   }
 
-  // --- CYCLE AUTOMATIQUE ---
+  // LOGIQUE DU DIMANCHE (HEBDOMADAIRE)
+  function cycleDimancheMinuit() {
+    let impotIS = beneficeSemaineAccumule * tauxImpotBenefice;
+    capitalHolding -= impotIS;
+    
+    logs = `⚖️ DIMANCHE : Impôt sur les bénéfices prélevé : -${impotIS.toLocaleString()}$`;
+    beneficeSemaineAccumule = 0; // Reset pour la semaine suivante
+  }
+
+  // SIMULATION DU FLUX DE TRÉSORERIE
   onMount(() => {
     const interval = setInterval(() => {
-      // Le gain net prend en compte le boost et retire l'investissement choisi
-      let gainParSeconde = (gainJournalierEstime * boostMarketing) / 3600; 
-      let coutMktParSeconde = investissementMkt / 3600;
-      
-      capitalHolding += (gainParSeconde - coutMktParSeconde);
+      // Gain par seconde basé sur les revenus journaliers
+      let gainTotalJour = filiales.reduce((acc, f) => acc + f.gainJour, 0);
+      let gainTick = gainTotalJour / 3600; 
+
+      capitalHolding += gainTick;
+      beneficeSemaineAccumule += gainTick;
     }, 1000);
     return () => clearInterval(interval);
   });
@@ -42,48 +50,53 @@
 
 <main style="background: #000; color: #eee; min-height: 100vh; font-family: sans-serif;">
   
-  <header style="background: #111; padding: 20px; border-bottom: 3px solid #3498db; display: flex; justify-content: space-between;">
+  <header style="background: #111; padding: 20px; border-bottom: 3px solid #f1c40f; display: flex; justify-content: space-between;">
     <div>
-      <h1 style="margin:0; font-size: 0.8rem; color: #555;">HOLDING CONTROLE</h1>
-      <div style="font-size: 1.6rem; font-weight: bold; color: #3498db;">{capitalHolding.toLocaleString(undefined, {maximumFractionDigits: 2})} $</div>
+      <h1 style="margin:0; font-size: 0.8rem; color: #555;">ÉTAT FINANCIER EMPIRE</h1>
+      <div style="font-size: 1.6rem; font-weight: bold; color: #f1c40f;">
+        {capitalHolding.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} $
+      </div>
+    </div>
+    <div style="text-align: right;">
+      <span style="font-size: 0.6rem; color: #666; display: block;">BÉNÉFICE SEMAINE</span>
+      <b style="color: #2ecc71;">+ {beneficeSemaineAccumule.toLocaleString(undefined, {maximumFractionDigits: 0})} $</b>
     </div>
   </header>
 
   <div style="padding: 15px;">
-    <div style="background: #0a0a0a; border: 1px solid #222; border-radius: 8px; overflow: hidden;">
-      
-      <div style="background: #151515; padding: 15px; border-left: 5px solid #3498db;">
-        <h3 style="margin:0;">Acier 1</h3>
+    
+    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+      <div style="flex: 1; background: #0a0a0a; border: 1px solid #222; padding: 15px; border-radius: 8px;">
+        <p style="font-size: 0.7rem; color: #555; margin: 0;">TAXE MAIRIE (JOUR)</p>
+        <b style="color: #e74c3c;">-{taxeMunicipaleFixe} $ / entité</b>
       </div>
-
-      <div style="padding: 20px;">
-        <div style="background: #111; padding: 20px; border-radius: 8px; border: 1px solid #333; text-align: center;">
-          <p style="color: #888; font-size: 0.8rem; margin-bottom: 15px;">SAISIR VOTRE BUDGET MARKETING JOURNALIER</p>
-          
-          <input 
-            type="number" 
-            bind:value={investissementMkt} 
-            placeholder="Entrez un montant..." 
-            style="background: #000; border: 2px solid #3498db; color: #fff; padding: 15px; font-size: 1.5rem; width: 80%; text-align: center; border-radius: 4px;"
-          />
-
-          <div style="margin-top: 20px; display: flex; justify-content: space-around;">
-            <div>
-              <span style="display: block; font-size: 0.6rem; color: #666;">GAIN FILIALE</span>
-              <b style="color: #2ecc71;">{gainJournalierEstime} $</b>
-            </div>
-            <div>
-              <span style="display: block; font-size: 0.6rem; color: #666;">BOOST ACTUEL</span>
-              <b style="color: #3498db;">x {boostMarketing}</b>
-            </div>
-          </div>
-        </div>
-
-        <div style="margin-top: 20px; padding: 10px; background: #050505; border: 1px dashed #222; font-size: 0.75rem; color: #444;">
-          Note stratégique : Le marketing est efficace s'il est proportionnel à vos gains. Testez différents montants pour optimiser votre rentabilité.
-        </div>
+      <div style="flex: 1; background: #0a0a0a; border: 1px solid #222; padding: 15px; border-radius: 8px;">
+        <p style="font-size: 0.7rem; color: #555; margin: 0;">IMPÔT BÉNÉFICE (DIM)</p>
+        <b style="color: #f1c40f;">{tauxImpotBenefice * 100} %</b>
       </div>
     </div>
+
+    <div style="background: #111; padding: 15px; border-radius: 8px; border: 1px solid #333; margin-bottom: 20px;">
+      <p style="font-size: 0.7rem; color: #888; text-align: center; margin-bottom: 10px;">ACTIONS MAIRIE (TEST)</p>
+      <div style="display: flex; gap: 10px;">
+        <button on:click={cycleMinuitQuotidien} style="flex: 1; padding: 10px; background: #222; color: #eee; border: 1px solid #444; cursor: pointer; font-size: 0.7rem;">SIMULER MINUIT</button>
+        <button on:click={cycleDimancheMinuit} style="flex: 1; padding: 10px; background: #e74c3c; color: #fff; border: none; font-weight: bold; cursor: pointer; font-size: 0.7rem;">SIMULER DIMANCHE</button>
+      </div>
+    </div>
+
+    {#each filiales as f}
+      <div style="background: #0a0a0a; border: 1px solid #222; padding: 15px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <b style="color: #fff; display: block;">{f.nom}</b>
+          <small style="color: #444;">{f.type}</small>
+        </div>
+        <div style="text-align: right;">
+          <span style="color: #2ecc71; font-size: 0.8rem;">+{f.gainJour} $ / jour</span>
+          <span style="display: block; color: #e74c3c; font-size: 0.7rem;">Taxe Mairie: -{taxeMunicipaleFixe} $</span>
+        </div>
+      </div>
+    {/each}
+
   </div>
 
   <footer style="position: fixed; bottom: 0; width: 100%; background: #000; color: #2ecc71; padding: 10px; font-family: monospace; font-size: 0.7rem; border-top: 1px solid #222;">
